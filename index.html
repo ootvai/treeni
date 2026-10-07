@@ -1,0 +1,1034 @@
+<!doctype html>
+<html lang="fi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0f1218">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Treeni">
+<meta name="robots" content="noindex">
+<title>Treeni</title>
+<style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}img{max-width:100%}[hidden]{display:none!important}</style>
+</head>
+<body>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&family=Barlow+Condensed:wght@600;700&display=swap">
+<style>
+:root{
+  --bg:#0f1218; --bg2:#171c25; --bg3:#1f2632; --bg4:#273041;
+  --line:#2c3444; --line2:#3a465c;
+  --txt:#eaeef6; --txt2:#aab4c8; --muted:#7d8899;
+  --a:#ff8a46; --a-soft:rgba(255,138,70,.14);
+  --p:#48b6f5; --p-soft:rgba(72,182,245,.14);
+  --ok:#46c98b; --down:#e2664f; --danger:#ef6a6a; --warn:#e0b34a;
+  --acc:#ff8a46; --acc-soft:rgba(255,138,70,.14);
+  --r:12px; --shadow:0 2px 10px rgba(0,0,0,.35);
+  color-scheme:dark;
+}
+:root[data-theme="light"]{
+  --bg:#f2f4f8; --bg2:#ffffff; --bg3:#eef1f6; --bg4:#e3e8f0;
+  --line:#d8dee8; --line2:#c2cad8;
+  --txt:#141922; --txt2:#48525f; --muted:#6b7686;
+  --a:#c45812; --a-soft:rgba(196,88,18,.10);
+  --p:#0f6fae; --p-soft:rgba(15,111,174,.10);
+  --ok:#1a8a5d; --down:#c0492f; --danger:#c43a3a; --warn:#8a6206;
+  --shadow:0 1px 4px rgba(20,25,34,.10);
+  color-scheme:light;
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+body{
+  margin:0; background:var(--bg); color:var(--txt);
+  font-family:'Barlow',system-ui,-apple-system,'Segoe UI',sans-serif;
+  font-size:16px; line-height:1.4;
+  -webkit-text-size-adjust:100%;
+  padding-bottom:calc(86px + env(safe-area-inset-bottom,0px));
+}
+h1,h2,h3{font-family:'Barlow Condensed','Barlow',system-ui,sans-serif;margin:0;text-wrap:balance;letter-spacing:.01em}
+button{font-family:inherit;font-size:16px;color:inherit;cursor:pointer}
+input,select,textarea{font-family:inherit;font-size:17px;color:var(--txt)}
+:focus-visible{outline:2px solid var(--acc);outline-offset:2px}
+.wrap{max-width:560px;margin:0 auto;padding:0 16px}
+.view{padding-block:0 10px}
+
+/* header / viikkonauha */
+.topbar{position:sticky;top:env(safe-area-inset-top,0px);z-index:20;background:var(--bg);border-bottom:1px solid var(--line)}
+.topbar .wrap{padding-block:10px 8px}
+.trow{display:flex;align-items:center;gap:8px}
+.trow h1{flex:1;font-size:25px;line-height:1;text-transform:uppercase;min-width:0}
+.trow h1 small{display:block;font-family:'Barlow',sans-serif;font-size:12px;font-weight:500;letter-spacing:.09em;text-transform:uppercase;color:var(--muted);margin-top:4px}
+.arrow{width:42px;height:42px;flex:none;border-radius:11px;border:1px solid var(--line);background:var(--bg2);font-size:20px;line-height:1;display:grid;place-items:center}
+.strip{display:grid;grid-template-columns:repeat(7,1fr);gap:5px;margin-top:9px}
+.day{border:1px solid var(--line);background:var(--bg2);border-radius:10px;padding:6px 2px 6px;text-align:center;position:relative;display:block}
+.day .wd{display:block;font-size:11px;letter-spacing:.08em;color:var(--muted);text-transform:uppercase}
+.day .dn{display:block;font-family:'Barlow Condensed',sans-serif;font-size:19px;font-weight:700;line-height:1.05}
+.day .tp{display:block;font-size:10.5px;font-weight:600;letter-spacing:.06em;margin-top:1px}
+.day.A .tp{color:var(--a)} .day.P .tp{color:var(--p)} .day.R .tp{color:var(--muted)}
+.day.sel{border-color:var(--acc);background:var(--acc-soft);box-shadow:inset 0 0 0 1px var(--acc)}
+.day.today::after{content:'';position:absolute;left:50%;transform:translateX(-50%);bottom:3px;width:14px;height:2px;border-radius:2px;background:var(--txt2)}
+.day .dot{position:absolute;top:4px;right:5px;width:6px;height:6px;border-radius:50%;background:var(--ok)}
+.sync{margin-top:8px;font-size:12.5px;font-weight:600;letter-spacing:.03em;color:var(--txt2);background:var(--bg3);border:1px solid var(--line);border-radius:8px;padding:6px 9px;text-align:center}
+.ver{margin-top:4px;font-size:11px;color:var(--muted);text-align:center;overflow-wrap:anywhere}
+.sync.warn{color:var(--warn);border-color:rgba(224,179,74,.4);background:rgba(224,179,74,.10)}
+
+/* päivän banneri */
+.banner{display:flex;align-items:center;gap:10px;margin:14px 0 2px}
+.banner h2{font-size:32px;line-height:1;text-transform:uppercase;color:var(--acc)}
+.chip{margin-left:auto;font-size:12px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;padding:5px 9px;border-radius:999px;background:var(--bg3);color:var(--txt2);border:1px solid var(--line);white-space:nowrap}
+.chip.ok{background:rgba(70,201,139,.12);color:var(--ok);border-color:rgba(70,201,139,.35)}
+.swap{display:flex;gap:14px;margin:6px 0 0;flex-wrap:wrap}
+.linkbtn{background:none;border:none;padding:6px 0;color:var(--txt2);font-size:14px;text-decoration:underline;text-underline-offset:3px}
+
+/* liikekortit */
+.ex{background:var(--bg2);border:1px solid var(--line);border-radius:var(--r);margin-top:12px;overflow:hidden}
+.ex-hd{display:flex;align-items:baseline;gap:8px;padding:11px 13px 9px;border-bottom:1px solid var(--line)}
+.ex-hd h3{font-size:21px;line-height:1.05;flex:1;min-width:0}
+.ex-hd .last{font-size:12.5px;color:var(--muted);white-space:nowrap}
+.sets{padding:4px 10px 8px}
+.set{padding:8px 3px 5px;border-top:1px dashed var(--line)}
+.set:first-child{border-top:none}
+.set-top{display:flex;align-items:baseline;gap:6px;margin-bottom:6px;padding:0 2px}
+.setno{font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:15px;letter-spacing:.07em;text-transform:uppercase;color:var(--txt2)}
+.prev{margin-left:auto;font-size:13.5px;color:var(--muted);font-variant-numeric:tabular-nums}
+.prev b{color:var(--txt2);font-weight:600}
+.trend{font-size:13px;font-weight:700;min-width:12px}
+.trend.up{color:var(--ok)} .trend.dn{color:var(--down)}
+.set-in{display:flex;gap:8px}
+.grp{flex:1 1 140px;display:flex;align-items:stretch;gap:5px;min-width:0}
+.stp{width:38px;flex:none;border:1px solid var(--line);background:var(--bg3);border-radius:10px;font-size:21px;font-weight:600;line-height:1;color:var(--txt2);display:grid;place-items:center}
+.stp:active{background:var(--bg4)}
+.fld{flex:1;min-width:0;display:flex;align-items:center;gap:4px;background:var(--bg3);border:1px solid var(--line);border-radius:10px;padding:0 9px;height:48px}
+.fld:focus-within{border-color:var(--acc);background:var(--bg);box-shadow:0 0 0 2px var(--acc-soft)}
+.fld input{flex:1;min-width:0;width:100%;background:none;border:none;outline:none;padding:0;font-size:18px;font-weight:600;font-variant-numeric:tabular-nums;text-align:right}
+.fld .u{font-size:13px;color:var(--muted);font-weight:600;flex:none}
+.fld input::placeholder{color:var(--muted);font-weight:400}
+.ex-ft{display:flex;gap:8px;padding:0 12px 11px;flex-wrap:wrap}
+.mini{border:1px solid var(--line);background:var(--bg3);color:var(--txt2);border-radius:9px;padding:8px 11px;font-size:14px;font-weight:600}
+.mini:active{background:var(--bg4)}
+
+/* napit */
+.primary{width:100%;border:none;border-radius:14px;background:var(--acc);color:#0d1016;font-family:'Barlow Condensed',sans-serif;font-size:23px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;padding:17px 14px;margin-top:18px;box-shadow:var(--shadow)}
+.primary[disabled]{background:var(--bg3);color:var(--muted);box-shadow:none;cursor:default}
+.note{font-size:13.5px;color:var(--muted);text-align:center;margin:9px 0 0}
+.rest{background:var(--bg2);border:1px solid var(--line);border-radius:var(--r);padding:26px 18px;text-align:center;margin-top:16px}
+.rest h2{font-size:38px;text-transform:uppercase;color:var(--txt2);line-height:1}
+.rest p{color:var(--muted);margin:6px 0 16px;font-size:15px}
+.pair{display:flex;gap:10px}
+.pair button{flex:1;border-radius:12px;padding:14px 8px;font-family:'Barlow Condensed',sans-serif;font-size:19px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;border:1px solid var(--line2);background:var(--bg3)}
+.pair button.a{color:var(--a);border-color:var(--a)}
+.pair button.p{color:var(--p);border-color:var(--p)}
+
+/* navigaatio */
+.nav{position:fixed;left:0;right:0;bottom:0;z-index:30;display:grid;grid-template-columns:repeat(3,1fr);gap:2px;background:var(--bg2);border-top:1px solid var(--line);padding:6px 6px calc(6px + env(safe-area-inset-bottom,0px))}
+.tab{border:none;background:none;border-radius:11px;padding:9px 4px 7px;color:var(--muted);font-family:'Barlow Condensed',sans-serif;font-size:16px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;display:flex;flex-direction:column;align-items:center;gap:3px}
+.tab svg{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+.tab[aria-current="page"]{color:var(--acc);background:var(--acc-soft)}
+
+/* historia */
+.sec{margin-top:18px}
+.sec>h2{font-size:22px;text-transform:uppercase;letter-spacing:.04em;margin-bottom:9px}
+.field{display:block;margin-bottom:10px}
+.field span{display:block;font-size:12px;letter-spacing:.09em;text-transform:uppercase;color:var(--muted);margin-bottom:5px}
+select,textarea{width:100%;background:var(--bg3);border:1px solid var(--line);border-radius:11px;padding:13px 11px;outline:none}
+select:focus,textarea:focus{border-color:var(--acc)}
+textarea{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12.5px;line-height:1.45;min-height:110px;resize:vertical}
+.seg{display:flex;gap:6px;margin:2px 0 12px}
+.seg button{flex:1;border:1px solid var(--line);background:var(--bg2);border-radius:10px;padding:10px 4px;font-size:14px;font-weight:600;color:var(--txt2)}
+.seg button[aria-pressed="true"]{background:var(--acc-soft);border-color:var(--acc);color:var(--acc)}
+.card{background:var(--bg2);border:1px solid var(--line);border-radius:var(--r);padding:12px}
+.chartbox{position:relative;height:230px;margin:2px 0 4px}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:12px 0 2px}
+.stat{background:var(--bg3);border-radius:10px;padding:9px 10px}
+.stat .k{font-size:11px;letter-spacing:.07em;text-transform:uppercase;color:var(--muted)}
+.stat .v{font-family:'Barlow Condensed',sans-serif;font-size:22px;font-weight:700;font-variant-numeric:tabular-nums;line-height:1.15}
+.tbl-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
+table{width:100%;border-collapse:collapse;font-size:14.5px;font-variant-numeric:tabular-nums}
+th{text-align:left;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:600;padding:6px 10px 6px 0;border-bottom:1px solid var(--line);white-space:nowrap}
+td{padding:9px 10px 9px 0;border-bottom:1px solid var(--line);white-space:nowrap}
+tr:last-child td{border-bottom:none}
+td:last-child,th:last-child{padding-right:0}
+.log{display:flex;align-items:center;gap:9px;padding:10px 0;border-bottom:1px solid var(--line)}
+.log:last-child{border-bottom:none}
+.log .d{font-family:'Barlow Condensed',sans-serif;font-size:18px;font-weight:700;width:52px;flex:none;font-variant-numeric:tabular-nums}
+.log .m{font-size:13px;color:var(--muted);flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tag{font-size:11px;font-weight:700;letter-spacing:.07em;padding:3px 7px;border-radius:6px;flex:none;text-transform:uppercase}
+.tag.A{color:var(--a);background:var(--a-soft)} .tag.P{color:var(--p);background:var(--p-soft)}
+.icon{width:36px;height:36px;flex:none;border-radius:10px;border:1px solid var(--line);background:var(--bg3);color:var(--txt2);font-size:15px;line-height:1;display:grid;place-items:center}
+.icon.dg{color:var(--danger)}
+.empty{color:var(--muted);font-size:14.5px;padding:8px 0;margin:0}
+
+/* asetukset */
+.prow{display:flex;align-items:center;gap:8px;padding:9px 0;border-bottom:1px solid var(--line)}
+.prow:last-of-type{border-bottom:none}
+.prow input.nm{flex:1;min-width:0;background:none;border:none;outline:none;font-size:16.5px;font-weight:600;padding:6px 2px;border-bottom:1px solid transparent}
+.prow input.nm:focus{border-bottom-color:var(--acc)}
+.cnt{display:flex;align-items:center;gap:4px;flex:none}
+.cnt b{font-family:'Barlow Condensed',sans-serif;font-size:18px;min-width:30px;text-align:center;font-variant-numeric:tabular-nums}
+.cnt .stp{width:34px;height:34px;border-radius:9px;font-size:19px}
+.mv{display:flex;flex-direction:column;gap:2px;flex:none}
+.mv button{width:28px;height:19px;border:1px solid var(--line);background:var(--bg3);border-radius:6px;font-size:9px;line-height:1;color:var(--txt2);display:grid;place-items:center}
+.addrow{display:flex;gap:8px;margin-top:10px}
+.addrow input{flex:1;min-width:0;background:var(--bg3);border:1px solid var(--line);border-radius:10px;padding:12px 10px;outline:none}
+.addrow input:focus{border-color:var(--acc)}
+.addrow button{flex:none;border:1px solid var(--acc);background:var(--acc-soft);color:var(--acc);border-radius:10px;padding:0 15px;font-weight:700}
+.hint{font-size:13.5px;color:var(--muted);margin:8px 0 0}
+.btnrow{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap}
+.btnrow button{flex:1 1 auto;border:1px solid var(--line2);background:var(--bg3);border-radius:11px;padding:13px 12px;font-weight:600}
+.btnrow button.dg{color:var(--danger);border-color:rgba(239,106,106,.45)}
+.subhd{font-family:'Barlow Condensed',sans-serif;font-size:17px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;margin:2px 0 4px}
+
+/* overlayt */
+#toast{position:fixed;left:50%;transform:translate(-50%,20px);bottom:calc(98px + env(safe-area-inset-bottom,0px));z-index:60;background:var(--bg4);color:var(--txt);border:1px solid var(--line2);border-radius:11px;padding:12px 16px;font-weight:600;font-size:15px;box-shadow:var(--shadow);opacity:0;pointer-events:none;transition:opacity .18s,transform .18s;max-width:88vw;text-align:center}
+#toast.on{opacity:1;transform:translate(-50%,0)}
+#modal{position:fixed;inset:0;z-index:70;background:rgba(6,9,14,.66);display:grid;place-items:center;padding:20px}
+#modal .box{background:var(--bg2);border:1px solid var(--line2);border-radius:15px;padding:20px;max-width:360px;width:100%;box-shadow:var(--shadow)}
+#modal p{margin:0 0 16px;font-size:16px}
+#modal .pair button{background:var(--bg3);color:var(--txt);font-size:17px;text-transform:none;font-family:'Barlow',sans-serif}
+#modal .pair button.dgb{color:var(--danger);border-color:rgba(239,106,106,.5)}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+@media (max-width:359px){.grp{flex-basis:118px}.stp{width:34px}.fld{padding:0 7px}}
+</style>
+
+<div class="topbar"><div class="wrap">
+  <div class="trow">
+    <button class="arrow" id="prevW" aria-label="Edellinen viikko">&lsaquo;</button>
+    <h1 id="wkTitle">&nbsp;<small id="wkSub">&nbsp;</small></h1>
+    <button class="arrow" id="nextW" aria-label="Seuraava viikko">&rsaquo;</button>
+  </div>
+  <div class="strip" id="strip"></div>
+  <div class="sync" id="sync" hidden></div>
+  <div class="ver" id="ver">w1 · käynnistyy…</div>
+</div></div>
+
+<main class="wrap">
+  <section id="v-treeni" class="view"></section>
+  <section id="v-historia" class="view" hidden></section>
+  <section id="v-asetukset" class="view" hidden></section>
+</main>
+
+<nav class="nav" id="nav">
+  <button class="tab" data-v="treeni" aria-current="page"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2.5 12h2M19.5 12h2M6.5 8.5v7M17.5 8.5v7M9.5 6.5v11M14.5 6.5v11M9.5 12h5"/></svg>Treeni</button>
+  <button class="tab" data-v="historia"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 17.5 9 10.5l4 4 8-9"/><path d="M3 21h18"/></svg>Historia</button>
+  <button class="tab" data-v="asetukset"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h9M19 7h1M4 17h3M13 17h7"/><circle cx="16" cy="7" r="2.4"/><circle cx="10" cy="17" r="2.4"/></svg>Asetukset</button>
+</nav>
+
+<div id="toast" role="status" aria-live="polite"></div>
+<div id="modal" hidden></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script>
+/* vianetsintä: näytetään kaatuminen ruudulla, koska puhelimen konsolia ei näe */
+(function(){
+  function show(m){ var v=document.getElementById('ver'); if(v) v.textContent='w1 · VIRHE: '+m; }
+  window.addEventListener('error',function(e){ show((e.message||'?')+' @'+(e.lineno||'?')+':'+(e.colno||'?')); });
+  window.addEventListener('unhandledrejection',function(e){ var r=e.reason; show('lupaus: '+((r&&(r.code||r.message))||r)); });
+})();
+</script>
+<script>
+(function(){
+'use strict';
+var KEY='treeni.v1';
+var WD=['ma','ti','ke','to','pe','la','su'];
+var MONTHS=['tammi','helmi','maalis','huhti','touko','kesä','heinä','elo','syys','loka','marras','joulu'];
+var DEF_PATTERN=['A','P','A','R','P','A','R'];   /* ma..su A-viikolla */
+var ANCHOR=Date.UTC(2026,8,21);              /* ma 21.9.2026 = A-viikko */
+var DAY=864e5;
+var DEF_NAMES={A:'Anterior',P:'Posterior',R:'Lepo'};
+var DEFAULTS={
+  A:[['vinopenkki-smitti','Vinopenkki smitti'],['peck-deck','Peck deck'],['pystypunnerrus','Pystypunnerrus'],
+     ['vipari','Vipari'],['pushdown','Pushdown'],['etureisi','Etureisi'],['kyykky','Kyykky'],['vatsat','Vatsat']],
+  P:[['ylatalja','Ylätalja'],['kapea-soutu','Kapea soutu'],['reverse-peck-deck','Reverse peck deck'],
+     ['preacher-curl','Preacher curl'],['takareisi','Takareisi'],['pohkeet','Pohkeet']]
+};
+
+/* ---------- päivämäärät ---------- */
+function pad(n){return n<10?'0'+n:''+n;}
+function isoUTC(t){var d=new Date(t);return d.getUTCFullYear()+'-'+pad(d.getUTCMonth()+1)+'-'+pad(d.getUTCDate());}
+function todayISO(){var d=new Date();return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());}
+function tUTC(iso){var p=iso.split('-');return Date.UTC(+p[0],+p[1]-1,+p[2]);}
+function wdIdx(iso){return (new Date(tUTC(iso)).getUTCDay()+6)%7;}
+function addDays(iso,n){return isoUTC(tUTC(iso)+n*DAY);}
+function mondayOf(iso){return addDays(iso,-wdIdx(iso));}
+function weekSwapped(iso){var w=Math.round((tUTC(mondayOf(iso))-ANCHOR)/(7*DAY));return ((w%2)+2)%2===1;}
+function planFor(iso){
+  var t=(S.pattern||DEF_PATTERN)[wdIdx(iso)];
+  if(!S.altWeeks) return t;
+  return weekSwapped(iso)?(t==='A'?'P':t==='P'?'A':'R'):t;
+}
+function dm(iso){var p=iso.split('-');return (+p[2])+'.'+(+p[1])+'.';}
+function dmy(iso){var p=iso.split('-');return (+p[2])+'.'+(+p[1])+'.'+p[0];}
+function longDate(iso){var p=iso.split('-');return WD[wdIdx(iso)]+' '+(+p[2])+'. '+MONTHS[+p[1]-1]+'kuuta';}
+function clock(ts){var d=new Date(ts);return pad(d.getHours())+'.'+pad(d.getMinutes());}
+
+/* ---------- tila ---------- */
+function blank(){
+  var s={v:1,ex:{},prog:{A:[],P:[]},sessions:{},overrides:{},theme:'dark',
+    names:{A:DEF_NAMES.A,P:DEF_NAMES.P,R:DEF_NAMES.R},pattern:DEF_PATTERN.slice(),altWeeks:true};
+  ['A','P'].forEach(function(k){
+    DEFAULTS[k].forEach(function(e){ s.ex[e[0]]={id:e[0],name:e[1]}; s.prog[k].push({id:e[0],sets:2}); });
+  });
+  return s;
+}
+/* ---------- käyttäjän linkkikoodi ---------- */
+/* koodi tulee linkistä (?k=...) ja jää muistiin; se ratkaisee kenen treenit pilvestä haetaan */
+var CKEY='treeni.code';
+var CODE=(function(){
+  var c='', old='';
+  try{ c=(new URLSearchParams(location.search).get('k')||'').trim(); }catch(e){}
+  try{ old=localStorage.getItem(CKEY)||''; }catch(e){}
+  if(!c) return old;
+  if(c!==old){
+    try{
+      /* toisen käyttäjän data ei saa valua tämän koodin alle */
+      if(old) [KEY,'treeni.pending','treeni.synced','treeni.wrote'].forEach(function(k){ localStorage.removeItem(k); });
+      localStorage.setItem(CKEY,c);
+    }catch(e){}
+  }
+  return c;
+})();
+var S=(function(){
+  try{
+    var raw=localStorage.getItem(KEY);
+    if(raw){
+      var o=JSON.parse(raw);
+      if(o&&o.v===1&&o.ex&&o.prog&&o.prog.A&&o.prog.P){
+        o.sessions=o.sessions||{}; o.overrides=o.overrides||{};
+        o.names={A:(o.names&&o.names.A)||DEF_NAMES.A,P:(o.names&&o.names.P)||DEF_NAMES.P,R:(o.names&&o.names.R)||DEF_NAMES.R};
+        o.pattern=(o.pattern&&o.pattern.length===7)?o.pattern:DEF_PATTERN.slice();
+        o.altWeeks=(o.altWeeks===undefined)?true:!!o.altWeeks;
+        return o;
+      }
+    }
+  }catch(e){}
+  return blank();
+})();
+var storageOK=true;
+function persist(){
+  try{ localStorage.setItem(KEY,JSON.stringify(S)); }
+  catch(e){ if(storageOK){ storageOK=false; toast('Selain ei salli tallennusta — data katoaa sivun sulkiessa'); } }
+}
+function skey(iso,t){return iso+'|'+t;}
+function sess(iso,t){return S.sessions[skey(iso,t)]||null;}
+function ensure(iso,t){
+  var k=skey(iso,t), s=S.sessions[k];
+  if(!s){ s={date:iso,type:t,ts:0,saved:false,entries:{},counts:{}}; S.sessions[k]=s; }
+  s.counts=s.counts||{};
+  return s;
+}
+function typeFor(iso){ return S.overrides[iso]||planFor(iso); }
+function filled(r){ return !!r&&(r.kg!==''||r.reps!==''); }
+function hasData(s){
+  if(!s) return false;
+  for(var id in s.entries){ var a=s.entries[id]; for(var i=0;i<a.length;i++) if(filled(a[i])) return true; }
+  return false;
+}
+function num(v){ if(v===''||v==null) return NaN; var n=parseFloat(String(v).replace(',','.')); return isFinite(n)?n:NaN; }
+function fmtN(n){ return (Math.round(n*100)/100).toString().replace('.',','); }
+function rowsOf(s,id){ return (s&&s.entries[id])||[]; }
+function volOf(rows){ var v=0; rows.forEach(function(r){var k=num(r.kg),t=num(r.reps); if(isFinite(k)&&isFinite(t)) v+=k*t;}); return v; }
+function topOf(rows){ var m=NaN; rows.forEach(function(r){var k=num(r.kg); if(isFinite(k)&&(!isFinite(m)||k>m)) m=k;}); return m; }
+function repsOf(rows){ var v=0; rows.forEach(function(r){var t=num(r.reps); if(isFinite(t)) v+=t;}); return v; }
+function setCount(s,p){
+  var c=s&&s.counts?s.counts[p.id]:0;
+  if(c) return Math.max(1,c);
+  return Math.max(p.sets,rowsOf(s,p.id).length);
+}
+function savedSessions(){
+  var out=[]; for(var k in S.sessions){ var s=S.sessions[k]; if(s.saved&&hasData(s)) out.push(s); }
+  out.sort(function(a,b){ return a.date<b.date?-1:a.date>b.date?1:(a.ts-b.ts); });
+  return out;
+}
+function lastPerf(id,iso,exKey){
+  var best=null;
+  for(var k in S.sessions){
+    var s=S.sessions[k];
+    if(!s.saved||k===exKey||s.date>iso) continue;
+    var rows=(s.entries[id]||[]).filter(filled);
+    if(!rows.length) continue;
+    if(!best||s.date>best.date||(s.date===best.date&&s.ts>best.ts)) best={date:s.date,ts:s.ts,rows:rows};
+  }
+  return best;
+}
+function esc(t){ return String(t).replace(/[&<>"]/g,function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
+function slug(name){
+  var b=name.toLowerCase().replace(/[äå]/g,'a').replace(/ö/g,'o').replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'')||'liike';
+  var id=b,n=2; while(S.ex[id]){ id=b+'-'+n; n++; }
+  return id;
+}
+
+/* ---------- ilmoitukset ---------- */
+var toastEl=document.getElementById('toast'), toastT;
+function toast(msg){
+  toastEl.textContent=msg; toastEl.classList.add('on');
+  clearTimeout(toastT); toastT=setTimeout(function(){ toastEl.classList.remove('on'); },2400);
+}
+var modal=document.getElementById('modal');
+function ask(msg,okLabel,danger,cb){
+  modal.innerHTML='<div class="box"><p>'+esc(msg)+'</p><div class="pair">'+
+    '<button data-x="0">Peruuta</button><button data-x="1" class="'+(danger?'dgb':'')+'">'+esc(okLabel)+'</button></div></div>';
+  modal.hidden=false;
+  modal.onclick=function(e){
+    var b=e.target.closest('button[data-x]');
+    if(!b){ if(e.target===modal) modal.hidden=true; return; }
+    modal.hidden=true; if(b.dataset.x==='1') cb();
+  };
+}
+
+/* ---------- näkymät ---------- */
+var cur=todayISO(), view='treeni';
+var V={treeni:document.getElementById('v-treeni'),historia:document.getElementById('v-historia'),asetukset:document.getElementById('v-asetukset')};
+var topbar=document.querySelector('.topbar');
+function applyTheme(){
+  if(S.theme==='light') document.documentElement.setAttribute('data-theme','light');
+  else document.documentElement.removeAttribute('data-theme');
+}
+function accentType(){ return view==='treeni'?typeFor(cur):'A'; }
+function setAccent(){
+  var t=accentType(), r=document.documentElement.style, cs=getComputedStyle(document.documentElement);
+  var key=(t==='P')?'--p':(t==='R')?'--txt2':'--a';
+  var soft=(t==='P')?'--p-soft':(t==='R')?'--bg3':'--a-soft';
+  r.setProperty('--acc',cs.getPropertyValue(key).trim());
+  r.setProperty('--acc-soft',cs.getPropertyValue(soft).trim());
+}
+function go(v){
+  view=v;
+  for(var k in V) V[k].hidden=(k!==v);
+  [].forEach.call(document.querySelectorAll('.tab'),function(b){
+    if(b.dataset.v===v) b.setAttribute('aria-current','page'); else b.removeAttribute('aria-current');
+  });
+  topbar.hidden=(v!=='treeni');
+  setAccent(); render(); window.scrollTo(0,0);
+}
+function render(){
+  if(view==='treeni'){ renderStrip(); renderDay(); }
+  else if(view==='historia') renderHistory();
+  else renderSettings();
+}
+
+/* ---------- viikkonauha ---------- */
+function renderStrip(){
+  var mon=mondayOf(cur), today=todayISO(), html='';
+  for(var i=0;i<7;i++){
+    var iso=addDays(mon,i), t=typeFor(iso), over=(S.overrides[iso]&&S.overrides[iso]!==planFor(iso));
+    var a=sess(iso,'A'), p=sess(iso,'P');
+    var done=(a&&a.saved)||(p&&p.saved);
+    html+='<button class="day '+t+(iso===cur?' sel':'')+(iso===today?' today':'')+'" data-iso="'+iso+'">'+
+      (done?'<span class="dot"></span>':'')+
+      '<span class="wd">'+WD[i]+'</span><span class="dn">'+(+iso.split('-')[2])+'</span>'+
+      '<span class="tp">'+(t==='R'?'–':t)+(over?'*':'')+'</span></button>';
+  }
+  document.getElementById('strip').innerHTML=html;
+  var counts={A:0,P:0};
+  for(var j=0;j<7;j++){ var pt=planFor(addDays(mon,j)); if(counts[pt]!==undefined) counts[pt]++; }
+  var primary=counts.A>=counts.P?'A':'P';
+  document.getElementById('wkTitle').firstChild.nodeValue=longDate(cur)+' ';
+  document.getElementById('wkSub').textContent=S.names[primary]+'-viikko · '+counts[primary]+' × '+S.names[primary].toLowerCase();
+}
+
+/* ---------- treenipäivä ---------- */
+function prevText(lp,i){
+  if(!lp) return '<span class="prev">ei aiempaa</span>';
+  var r=lp.rows[i];
+  if(!r) return '<span class="prev">'+dm(lp.date)+': –</span>';
+  var kg=(r.kg===''?'–':fmtN(num(r.kg))+' kg'), rp=(r.reps===''?'–':r.reps);
+  return '<span class="prev">ed. <b>'+esc(kg)+' × '+esc(rp)+'</b></span>';
+}
+function renderDay(){
+  var t=typeFor(cur), el=V.treeni, auto=planFor(cur);
+  var over=(S.overrides[cur]&&S.overrides[cur]!==auto);
+  if(t==='R'){
+    el.innerHTML='<div class="rest"><h2>Lepopäivä</h2><p>Ohjelman mukaan '+longDate(cur)+' on vapaa.</p>'+
+      '<div class="pair"><button class="a" data-force="A">Treenaa '+esc(S.names.A.toLowerCase())+'</button><button class="p" data-force="P">Treenaa '+esc(S.names.P.toLowerCase())+'</button></div></div>'+
+      (over?'<div class="swap"><button class="linkbtn" data-force="auto">Palauta ohjelman mukainen päivä</button></div>':'');
+    return;
+  }
+  var s=sess(cur,t), key=skey(cur,t), list=S.prog[t], other=(t==='A'?'P':'A'), h='';
+  h+='<div class="banner"><h2>'+esc(S.names[t])+'</h2>'+
+     (s&&s.saved?'<span class="chip ok">Tallennettu '+clock(s.ts)+'</span>':'<span class="chip">'+list.length+' liikettä</span>')+'</div>';
+  h+='<div class="swap"><button class="linkbtn" data-force="'+other+'">Vaihda '+esc(S.names[other].toLowerCase())+'iin</button>'+
+     '<button class="linkbtn" data-force="R">Merkitse lepopäiväksi</button>'+
+     (over?'<button class="linkbtn" data-force="auto">Palauta ohjelma</button>':'')+'</div>';
+  if(!list.length) h+='<p class="empty">Tässä splitissä ei ole liikkeitä. Lisää ne Asetukset-välilehdellä.</p>';
+
+  list.forEach(function(p){
+    var ex=S.ex[p.id]; if(!ex) return;
+    var rows=rowsOf(s,p.id), n=setCount(s,p), lp=lastPerf(p.id,cur,key);
+    h+='<article class="ex"><div class="ex-hd"><h3>'+esc(ex.name)+'</h3>'+
+       '<span class="last">'+(lp?'viimeksi '+dm(lp.date):'ei historiaa')+'</span></div><div class="sets">';
+    for(var i=0;i<n;i++){
+      var r=rows[i]||{kg:'',reps:''}, iid='i-'+t+'-'+p.id+'-'+i;
+      h+='<div class="set" data-ex="'+p.id+'" data-i="'+i+'">'+
+        '<div class="set-top"><span class="setno">Sarja '+(i+1)+'</span>'+prevText(lp,i)+'<span class="trend"></span></div>'+
+        '<div class="set-in">'+
+          '<div class="grp"><button class="stp" type="button" data-adj="kg" data-d="-1" aria-label="Vähennä painoa">−</button>'+
+            '<label class="fld" for="'+iid+'-kg"><input id="'+iid+'-kg" type="text" inputmode="decimal" autocomplete="off" placeholder="0" data-f="kg" value="'+esc(r.kg)+'"><span class="u">kg</span></label>'+
+            '<button class="stp" type="button" data-adj="kg" data-d="1" aria-label="Lisää painoa">+</button></div>'+
+          '<div class="grp"><button class="stp" type="button" data-adj="reps" data-d="-1" aria-label="Vähennä toistoja">−</button>'+
+            '<label class="fld" for="'+iid+'-reps"><span class="u">×</span><input id="'+iid+'-reps" type="text" inputmode="numeric" autocomplete="off" placeholder="0" data-f="reps" value="'+esc(r.reps)+'"></label>'+
+            '<button class="stp" type="button" data-adj="reps" data-d="1" aria-label="Lisää toistoja">+</button></div>'+
+        '</div></div>';
+    }
+    h+='</div><div class="ex-ft">'+
+       (lp?'<button class="mini" data-act="copy" data-ex="'+p.id+'">Sama kuin viimeksi</button>':'')+
+       '<button class="mini" data-act="addset" data-ex="'+p.id+'">+ sarja</button>'+
+       (n>1?'<button class="mini" data-act="delset" data-ex="'+p.id+'">− sarja</button>':'')+
+       '</div></article>';
+  });
+
+  h+='<button class="primary" id="saveBtn" type="button">'+(s&&s.saved?'Päivitä treeni':'Tallenna treeni')+'</button>'+
+     '<p class="note" id="saveNote"></p>';
+  el.innerHTML=h;
+  [].forEach.call(el.querySelectorAll('.set'),markSet);
+  updateSave();
+}
+function markSet(setEl){
+  var tr=setEl.querySelector('.trend'); tr.className='trend'; tr.textContent='';
+  var kg=num(setEl.querySelector('[data-f="kg"]').value), rp=num(setEl.querySelector('[data-f="reps"]').value);
+  var pv=setEl.querySelector('.prev b'); if(!pv||!isFinite(kg)||!isFinite(rp)) return;
+  var m=pv.textContent.match(/^([\d,.]+) kg × (\d+)/); if(!m) return;
+  var was=num(m[1])*(+m[2]), now=kg*rp;
+  if(now>was){ tr.className='trend up'; tr.textContent='▲'; }
+  else if(now<was){ tr.className='trend dn'; tr.textContent='▼'; }
+}
+function updateSave(){
+  var b=document.getElementById('saveBtn'); if(!b) return;
+  var s=sess(cur,typeFor(cur)), ok=hasData(s);
+  b.disabled=!ok;
+  document.getElementById('saveNote').textContent = (s&&s.saved)
+    ? 'Tallennettu '+dmy(s.date)+' klo '+clock(s.ts)+'. Muutokset päivittyvät tallentaessa.'
+    : ok ? 'Tallennus vie treenin historiaan ja edellisiin kertoihin.'
+         : 'Syötä vähintään yksi sarja.';
+}
+V.treeni.addEventListener('input',function(e){
+  var inp=e.target.closest('input[data-f]'); if(!inp) return;
+  var set=inp.closest('.set'), s=ensure(cur,typeFor(cur));
+  var id=set.dataset.ex, i=+set.dataset.i;
+  var arr=s.entries[id]||(s.entries[id]=[]);
+  while(arr.length<=i) arr.push({kg:'',reps:''});
+  arr[i][inp.dataset.f]=inp.value.trim();
+  persistSess(); markSet(set); updateSave();
+});
+V.treeni.addEventListener('click',function(e){
+  var b=e.target.closest('button'); if(!b) return;
+  var t=typeFor(cur);
+
+  if(b.dataset.force){
+    var f=b.dataset.force;
+    if(f==='auto') delete S.overrides[cur]; else S.overrides[cur]=f;
+    persistCfg(); setAccent(); renderStrip(); renderDay(); return;
+  }
+  if(b.dataset.adj){
+    var set=b.closest('.set'), fld=b.dataset.adj, d=+b.dataset.d;
+    var inp=set.querySelector('[data-f="'+fld+'"]'), step=(fld==='kg'?2.5:1), v=num(inp.value);
+    if(!isFinite(v)){
+      var pv=set.querySelector('.prev b'), m=pv?pv.textContent.match(/^([\d,.]+) kg × (\d+)/):null;
+      v=m?(fld==='kg'?num(m[1]):+m[2]):(d>0?step:0);
+    }else{ v=v+d*step; }
+    if(!(v>0)) v=0;
+    inp.value=fmtN(v);
+    inp.dispatchEvent(new Event('input',{bubbles:true}));
+    return;
+  }
+  if(b.id==='saveBtn'){
+    var sv=sess(cur,t); if(!hasData(sv)) return;
+    sv.saved=true; sv.ts=Date.now(); sv.date=cur; sv.type=t;
+    persistSess(); renderStrip(); renderDay(); toast('Treeni tallennettu'); return;
+  }
+  var act=b.dataset.act; if(!act) return;
+  var id=b.dataset.ex, prog=S.prog[t].filter(function(x){return x.id===id;})[0];
+  if(!prog) return;
+  var s2=ensure(cur,t), n=setCount(s2,prog);
+  if(act==='copy'){
+    var lp=lastPerf(id,cur,skey(cur,t)); if(!lp) return;
+    s2.entries[id]=lp.rows.map(function(r){ return {kg:r.kg,reps:r.reps}; });
+    s2.counts[id]=Math.max(n,lp.rows.length);
+    persistSess(); renderDay(); toast('Edelliset arvot kopioitu');
+  }else if(act==='addset'){
+    s2.counts[id]=n+1; persistSess(); renderDay();
+  }else if(act==='delset'){
+    var nn=Math.max(1,n-1);
+    s2.counts[id]=nn;
+    if(s2.entries[id]&&s2.entries[id].length>nn) s2.entries[id]=s2.entries[id].slice(0,nn);
+    persistSess(); renderDay(); updateSave();
+  }
+});
+
+/* ---------- historia ---------- */
+var hSel=null, hMetric='top', chart=null;
+function exerciseOptions(){
+  var used={}, opts=[];
+  ['A','P'].forEach(function(k){
+    var g=[]; S.prog[k].forEach(function(p){ if(S.ex[p.id]){ g.push(p.id); used[p.id]=1; } });
+    if(g.length) opts.push([S.names[k],g]);
+  });
+  var rest=[];
+  savedSessions().forEach(function(s){ for(var id in s.entries){ if(!used[id]&&S.ex[id]&&rest.indexOf(id)<0) rest.push(id); } });
+  if(rest.length) opts.push(['Ohjelman ulkopuolelta',rest]);
+  return opts;
+}
+function seriesFor(id){
+  return savedSessions().filter(function(s){ return (s.entries[id]||[]).filter(filled).length; })
+    .map(function(s){
+      var rows=s.entries[id].filter(filled);
+      return {date:s.date,type:s.type,rows:rows,top:topOf(rows),vol:volOf(rows),reps:repsOf(rows)};
+    });
+}
+function renderHistory(){
+  var opts=exerciseOptions();
+  if(!opts.length){ V.historia.innerHTML='<div class="sec"><h2>Historia</h2><p class="empty">Ei liikkeitä.</p></div>'; return; }
+  var flat=[]; opts.forEach(function(g){ flat=flat.concat(g[1]); });
+  if(!hSel||flat.indexOf(hSel)<0) hSel=flat[0];
+
+  var h='<div class="sec"><label class="field" for="hSel"><span>Liike</span><select id="hSel">';
+  opts.forEach(function(g){
+    h+='<optgroup label="'+esc(g[0])+'">';
+    g[1].forEach(function(id){ h+='<option value="'+id+'"'+(id===hSel?' selected':'')+'>'+esc(S.ex[id].name)+'</option>'; });
+    h+='</optgroup>';
+  });
+  h+='</select></label>'+
+    '<div class="seg">'+
+      '<button data-m="top" aria-pressed="'+(hMetric==='top')+'">Paras sarja</button>'+
+      '<button data-m="vol" aria-pressed="'+(hMetric==='vol')+'">Volyymi</button>'+
+      '<button data-m="reps" aria-pressed="'+(hMetric==='reps')+'">Toistot</button>'+
+    '</div>';
+
+  var d=seriesFor(hSel);
+  if(!d.length){
+    h+='<div class="card"><p class="empty">Liikkeelle '+esc(S.ex[hSel].name)+' ei ole vielä tallennettuja suorituksia. Kirjaa treeni ja paina Tallenna, niin kehitys ilmestyy tähän.</p></div>';
+  }else{
+    var last=d[d.length-1];
+    var tops=d.map(function(x){ return isFinite(x.top)?x.top:0; });
+    var bestTop=Math.max.apply(null,tops);
+    h+='<div class="card"><div class="chartbox"><canvas id="hChart"></canvas></div>'+
+      '<div class="stats">'+
+        '<div class="stat"><div class="k">Kertoja</div><div class="v">'+d.length+'</div></div>'+
+        '<div class="stat"><div class="k">Ennätys</div><div class="v">'+(bestTop?fmtN(bestTop)+' kg':'–')+'</div></div>'+
+        '<div class="stat"><div class="k">Volyymi nyt</div><div class="v">'+fmtN(last.vol)+'</div></div>'+
+      '</div></div>'+
+      '<div class="card" style="margin-top:12px"><div class="tbl-wrap"><table><thead><tr>'+
+      '<th>Pvm</th><th>Sarjat</th><th>Paras</th><th>Volyymi</th></tr></thead><tbody>';
+    for(var i=d.length-1;i>=0;i--){
+      var r=d[i], prev=(i>0?d[i-1]:null);
+      var arrow=prev?(r.vol>prev.vol?' <span class="trend up">▲</span>':r.vol<prev.vol?' <span class="trend dn">▼</span>':''):'';
+      h+='<tr><td>'+dm(r.date)+' <span class="tag '+r.type+'">'+r.type+'</span></td>'+
+         '<td>'+r.rows.map(function(x){ return (x.kg===''?'–':fmtN(num(x.kg)))+' × '+(x.reps===''?'–':esc(x.reps)); }).join(' &nbsp; ')+'</td>'+
+         '<td>'+(isFinite(r.top)?fmtN(r.top)+' kg':'–')+'</td>'+
+         '<td>'+fmtN(r.vol)+arrow+'</td></tr>';
+    }
+    h+='</tbody></table></div><p class="hint">Volyymi = paino × toistot yhteensä. Nuoli vertaa edelliseen kertaan.</p></div>';
+  }
+  h+='</div>';
+
+  var all=savedSessions().reverse();
+  h+='<div class="sec"><h2>Treenit</h2><div class="card">';
+  if(!all.length) h+='<p class="empty">Ei tallennettuja treenejä.</p>';
+  else all.slice(0,40).forEach(function(s){
+    var n=0,vol=0;
+    for(var id in s.entries){ var rr=s.entries[id].filter(filled); if(rr.length){ n++; vol+=volOf(rr); } }
+    h+='<div class="log"><span class="d">'+dm(s.date)+'</span><span class="tag '+s.type+'">'+esc(S.names[s.type])+'</span>'+
+       '<span class="m">'+n+' liikettä · '+fmtN(vol)+' kg</span>'+
+       '<button class="icon" data-open="'+s.date+'" aria-label="Avaa treenipäivä">›</button>'+
+       '<button class="icon dg" data-del="'+skey(s.date,s.type)+'" aria-label="Poista treeni">✕</button></div>';
+  });
+  h+='</div></div>';
+  V.historia.innerHTML=h;
+  if(d.length) drawChart(d);
+}
+function cssv(n){ return (getComputedStyle(document.documentElement).getPropertyValue(n)||'').trim()||'#888888'; }
+function drawChart(d){
+  var cv=document.getElementById('hChart'); if(!cv) return;
+  if(chart){ chart.destroy(); chart=null; }
+  if(typeof Chart==='undefined'){
+    cv.parentNode.innerHTML='<p class="empty">Kaaviota ei voitu ladata (ei verkkoyhteyttä). Taulukko alla näyttää saman datan.</p>';
+    return;
+  }
+  var label=(hMetric==='top')?'Paras sarja (kg)':(hMetric==='vol')?'Volyymi (kg × toistot)':'Toistot yhteensä';
+  var vals=d.map(function(x){ return (hMetric==='top')?(isFinite(x.top)?x.top:null):(hMetric==='vol')?x.vol:x.reps; });
+  var acc=cssv('--acc'), line=cssv('--line'), muted=cssv('--muted');
+  var g=cv.getContext('2d').createLinearGradient(0,0,0,230);
+  g.addColorStop(0,acc+'55'); g.addColorStop(1,acc+'08');
+  chart=new Chart(cv,{
+    type:'line',
+    data:{labels:d.map(function(x){ return dm(x.date); }),
+      datasets:[{label:label,data:vals,borderColor:acc,backgroundColor:g,fill:true,tension:.25,borderWidth:2.5,
+        pointRadius:4,pointHoverRadius:6,pointBackgroundColor:cssv('--bg2'),pointBorderColor:acc,pointBorderWidth:2,spanGaps:true}]},
+    options:{responsive:true,maintainAspectRatio:false,animation:{duration:280},
+      layout:{padding:{top:8,right:4}},
+      plugins:{legend:{display:false},
+        tooltip:{backgroundColor:cssv('--bg4'),titleColor:cssv('--txt'),bodyColor:cssv('--txt'),
+          borderColor:cssv('--line2'),borderWidth:1,padding:10,displayColors:false,
+          callbacks:{label:function(c){ return label+': '+fmtN(c.parsed.y); }}}},
+      scales:{
+        x:{grid:{color:line,drawTicks:false},border:{color:line},
+           ticks:{color:muted,font:{size:11},maxRotation:0,autoSkipPadding:16}},
+        y:{grid:{color:line,drawTicks:false},border:{display:false},beginAtZero:(hMetric!=='top'),
+           ticks:{color:muted,font:{size:11},padding:6}}}}
+  });
+}
+V.historia.addEventListener('change',function(e){ if(e.target.id==='hSel'){ hSel=e.target.value; renderHistory(); } });
+V.historia.addEventListener('click',function(e){
+  var b=e.target.closest('button'); if(!b) return;
+  if(b.dataset.m){ hMetric=b.dataset.m; renderHistory(); return; }
+  if(b.dataset.open){ cur=b.dataset.open; go('treeni'); return; }
+  if(b.dataset.del){
+    var k=b.dataset.del;
+    ask('Poistetaanko treeni '+dmy(k.split('|')[0])+'?','Poista',true,function(){
+      delete S.sessions[k]; persist(); markDirty(keyToId(k)); renderHistory(); toast('Treeni poistettu');
+    });
+  }
+});
+
+/* ---------- asetukset ---------- */
+function renderSettings(){
+  var h='<div class="sec"><h2>Ohjelma</h2>';
+  ['A','P'].forEach(function(k){
+    h+='<div class="card" style="margin-bottom:12px">'+
+       '<input class="nm namein" data-namek="'+k+'" value="'+esc(S.names[k])+'" aria-label="Splitin '+k+' nimi" '+
+       'style="color:var('+(k==='A'?'--a':'--p')+');font-family:\'Barlow Condensed\',sans-serif;font-size:17px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;margin:2px 0 8px;width:100%">';
+    if(!S.prog[k].length) h+='<p class="empty">Ei liikkeitä.</p>';
+    S.prog[k].forEach(function(p){
+      var ex=S.ex[p.id]; if(!ex) return;
+      h+='<div class="prow" data-k="'+k+'" data-id="'+p.id+'">'+
+        '<div class="mv"><button data-mv="-1" aria-label="Siirrä ylös">▲</button><button data-mv="1" aria-label="Siirrä alas">▼</button></div>'+
+        '<input class="nm" value="'+esc(ex.name)+'" aria-label="Liikkeen nimi">'+
+        '<div class="cnt"><button class="stp" data-sets="-1" aria-label="Vähemmän sarjoja">−</button><b>'+p.sets+'×</b>'+
+        '<button class="stp" data-sets="1" aria-label="Enemmän sarjoja">+</button></div>'+
+        '<button class="icon dg" data-rm="1" aria-label="Poista liike">✕</button></div>';
+    });
+    h+='<div class="addrow"><input data-add="'+k+'" placeholder="Uusi liike" aria-label="Uuden liikkeen nimi">'+
+       '<button data-addbtn="'+k+'">Lisää</button></div></div>';
+  });
+  h+='<p class="hint">Sarjamäärä koskee tulevia treenejä. Tallennetut treenit säilyvät sellaisinaan, ja poistetun liikkeen historia näkyy edelleen Historia-välilehdellä.</p></div>';
+
+  h+='<div class="sec"><h2>Viikko-ohjelma</h2><div class="card">'+
+     '<p class="hint" style="margin-top:0">Valitse, mitä kunakin viikonpäivänä treenataan.</p>';
+  WD.forEach(function(wd,i){
+    h+='<div class="prow"><span style="flex:1;text-transform:capitalize;font-weight:600">'+wd+'</span>'+
+       '<select data-daysel="'+i+'" aria-label="'+wd+'n treeni" style="background:var(--bg3);border:1px solid var(--line);border-radius:9px;padding:8px 10px">'+
+       ['A','P','R'].map(function(o){ return '<option value="'+o+'"'+(S.pattern[i]===o?' selected':'')+'>'+esc(S.names[o])+'</option>'; }).join('')+
+       '</select></div>';
+  });
+  h+='<div class="prow" style="border-bottom:none"><span style="flex:1;font-weight:600">Vaihda split viikoittain</span>'+
+     '<input type="checkbox" id="altWeeksChk" '+(S.altWeeks?'checked':'')+' style="width:22px;height:22px"></div>'+
+     '<p class="hint">Kun vaihto on päällä, '+esc(S.names.A)+' ja '+esc(S.names.P)+' vuorottelevat viikko kerrallaan yllä valitussa kaavassa (ankkuri: viikko 21.9.2026). Pois päältä kytkettynä sama viikko-ohjelma toistuu joka viikko sellaisenaan. Tähti päivänumeron alla tarkoittaa käsin vaihdettua yksittäistä päivää.</p>'+
+     '</div></div>';
+
+  h+='<div class="sec"><h2>Pilvitallennus</h2><div class="card">'+
+     '<p class="hint" style="margin-top:0" id="syncNote">Yhdistetaan</p>'+
+     '<div class="btnrow"><button id="syncBtn">Lähetä muutokset nyt</button></div>'+
+     '</div></div>';
+
+  h+='<div class="sec"><h2>Varmuuskopio</h2><div class="card">'+
+     '<p class="hint" style="margin-top:0">Vapaaehtoinen lisäturva pilvitallennuksen päälle. Kopioi teksti talteen esimerkiksi muistiinpanoihin. Tuonti korvaa kaiken nykyisen datan.</p>'+
+     '<textarea id="io" spellcheck="false" aria-label="Varmuuskopio JSON-muodossa"></textarea>'+
+     '<div class="btnrow"><button id="copyBtn">Kopioi leikepöydälle</button><button id="importBtn">Tuo tekstikentästä</button></div>'+
+     '</div></div>';
+
+  h+='<div class="sec"><h2>Muuta</h2><div class="card">'+
+     '<div class="btnrow"><button id="themeBtn">Teema: '+(S.theme==='light'?'vaalea':'tumma')+'</button>'+
+     '<button id="wipeBtn" class="dg">Tyhjennä kaikki data</button></div>'+
+     '<p class="hint">'+savedSessions().length+' tallennettua treeniä. Data kirjoitetaan ensin selaimeen ja siitä pilveen, joten sama historia avautuu jokaisella laitteellasi.</p>'+
+     '</div></div>';
+  V.asetukset.innerHTML=h;
+  document.getElementById('io').value=JSON.stringify(S);
+  updateSync();
+}
+V.asetukset.addEventListener('input',function(e){
+  var inp=e.target.closest('input.nm'); if(!inp) return;
+  if(inp.dataset.namek){
+    var nk=inp.dataset.namek, v=(inp.value||'').trim();
+    S.names[nk]=v||DEF_NAMES[nk]; persistCfg(); setAccent(); return;
+  }
+  var row=inp.closest('.prow'); if(!row) return;
+  var ex=S.ex[row.dataset.id];
+  if(ex){ ex.name=inp.value; persistCfg(); }
+});
+V.asetukset.addEventListener('change',function(e){
+  var sel=e.target.closest('select[data-daysel]');
+  if(sel){ S.pattern[+sel.dataset.daysel]=sel.value; persistCfg(); renderSettings(); return; }
+  if(e.target.id==='altWeeksChk'){ S.altWeeks=e.target.checked; persistCfg(); renderSettings(); return; }
+});
+V.asetukset.addEventListener('click',function(e){
+  var b=e.target.closest('button'); if(!b) return;
+  var row=b.closest('.prow');
+  if(row){
+    var k=row.dataset.k, id=row.dataset.id, arr=S.prog[k];
+    var i=arr.map(function(x){ return x.id; }).indexOf(id);
+    if(i<0) return;
+    if(b.dataset.mv){
+      var j=i+(+b.dataset.mv); if(j<0||j>=arr.length) return;
+      var tmp=arr[i]; arr[i]=arr[j]; arr[j]=tmp; persistCfg(); renderSettings(); return;
+    }
+    if(b.dataset.sets){
+      arr[i].sets=Math.max(1,Math.min(10,arr[i].sets+(+b.dataset.sets))); persistCfg(); renderSettings(); return;
+    }
+    if(b.dataset.rm){
+      ask('Poistetaanko "'+S.ex[id].name+'" ohjelmasta? Historia säilyy.','Poista',true,function(){
+        S.prog[k].splice(i,1); persistCfg(); renderSettings(); toast('Liike poistettu ohjelmasta');
+      });
+      return;
+    }
+  }
+  if(b.dataset.addbtn){
+    var kk=b.dataset.addbtn, fld=V.asetukset.querySelector('input[data-add="'+kk+'"]');
+    var name=(fld.value||'').trim(); if(!name){ fld.focus(); return; }
+    var nid=slug(name); S.ex[nid]={id:nid,name:name}; S.prog[kk].push({id:nid,sets:2});
+    persistCfg(); renderSettings(); toast(name+' lisätty'); return;
+  }
+  if(b.id==='copyBtn'){
+    var io=document.getElementById('io'); io.focus(); io.select();
+    var done=false;
+    try{ done=document.execCommand('copy'); }catch(err){}
+    if(done){ toast('Kopioitu leikepöydälle'); }
+    else if(navigator.clipboard){
+      navigator.clipboard.writeText(io.value).then(function(){ toast('Kopioitu leikepöydälle'); },
+        function(){ toast('Kopiointi estetty — valitse teksti ja kopioi käsin'); });
+    }else toast('Valitse teksti ja kopioi käsin');
+    return;
+  }
+  if(b.id==='importBtn'){
+    var txt=document.getElementById('io').value.trim(), o=null;
+    try{ o=JSON.parse(txt); }catch(err){}
+    if(!o||o.v!==1||!o.ex||!o.prog||!o.prog.A||!o.prog.P){ toast('Virheellinen varmuuskopio'); return; }
+    ask('Korvataanko nykyinen data tuodulla varmuuskopiolla?','Tuo',true,function(){
+      var prev=Object.keys(S.sessions);
+      S=o; S.sessions=S.sessions||{}; S.overrides=S.overrides||{}; S.theme=S.theme||'dark';
+      S.names={A:(S.names&&S.names.A)||DEF_NAMES.A,P:(S.names&&S.names.P)||DEF_NAMES.P,R:(S.names&&S.names.R)||DEF_NAMES.R};
+      S.pattern=(S.pattern&&S.pattern.length===7)?S.pattern:DEF_PATTERN.slice();
+      S.altWeeks=(S.altWeeks===undefined)?true:!!S.altWeeks;
+      persistAll(prev); applyTheme(); setAccent(); renderSettings(); toast('Varmuuskopio tuotu');
+    });
+    return;
+  }
+  if(b.id==='syncBtn'){ if(db){ flush(); toast(pendingCount()?'Lähetetään…':'Kaikki jo tallennettu'); } return; }
+  if(b.id==='themeBtn'){ S.theme=(S.theme==='light'?'dark':'light'); persistCfg(); applyTheme(); setAccent(); renderSettings(); return; }
+  if(b.id==='wipeBtn'){
+    ask('Poistetaanko kaikki treenidata ja palautetaanko oletusohjelma?','Tyhjennä',true,function(){
+      var prev=Object.keys(S.sessions);
+      S=blank(); persistAll(prev); applyTheme(); setAccent(); renderSettings(); toast('Data tyhjennetty');
+    });
+  }
+});
+
+/* ---------- pilvitallennus (Supabase) ---------- */
+var PKEY='treeni.pending', SKEY='treeni.synced', VER='w1', WKEY='treeni.wrote';
+var SB_URL='https://ijzurdaldczkjlabcchc.supabase.co/rest/v1/rpc/', SB_KEY='sb_publishable_BXr_11KXalN0nVp65OTjxw_s6tt6bQF';
+var db=null, dbTried=false, everSynced=false, wrote=false, pending={}, flushT=null, flushing=false, lastOk=0, lastErr='';
+try{ pending=JSON.parse(localStorage.getItem(PKEY)||'{}')||{}; }catch(e){ pending={}; }
+try{ everSynced=(localStorage.getItem(SKEY)==='1'); wrote=(localStorage.getItem(WKEY)==='1'); }catch(e){}
+function savePending(){ try{ localStorage.setItem(PKEY,JSON.stringify(pending)); }catch(e){} }
+/* wrote = tämä laite on saanut kirjoituksen läpi tai nähnyt pilvessä treenejä: vasta silloin pilven puuttuva treeni tulkitaan poistetuksi */
+function markWrote(){ if(wrote) return; wrote=true; try{ localStorage.setItem(WKEY,'1'); }catch(e){} }
+function markSynced(){ everSynced=true; try{ localStorage.setItem(SKEY,'1'); }catch(e){} }
+function keyToId(k){ return k.replace('|','-'); }
+function idToKey(id){ return id.slice(0,10)+'|'+id.slice(11); }
+function pendingCount(){ var n=0; for(var x in pending) n++; return n; }
+function sessionDoc(s){ return {date:s.date,type:s.type,ts:s.ts||0,saved:!!s.saved,entries:s.entries||{},counts:s.counts||{}}; }
+function configDoc(){ return {ex:S.ex,prog:S.prog,overrides:S.overrides||{},theme:S.theme||'dark',names:S.names,pattern:S.pattern,altWeeks:S.altWeeks,updatedAt:Date.now()}; }
+/* pending[id] on versiolaskuri: kirjoituksen valmistuessa merkki poistetaan vain jos sitä ei ole sillä välin muutettu */
+var seq=0; for(var pk in pending) seq=Math.max(seq,+pending[pk]||0);
+function bump(id){ pending[id]=++seq; }
+function markDirty(id){ bump(id); savePending(); updateSync(); scheduleFlush(); }
+function persistSess(k){ persist(); markDirty(keyToId(k||skey(cur,typeFor(cur)))); }
+function persistCfg(){ persist(); markDirty('config'); }
+function persistAll(prev){
+  persist();
+  var ids={config:1}, i;
+  for(i=0;i<(prev||[]).length;i++) ids[keyToId(prev[i])]=1;
+  for(var k in S.sessions) ids[keyToId(k)]=1;
+  for(var id in ids) bump(id);
+  savePending(); updateSync(); scheduleFlush();
+}
+function typing(){
+  var a=document.activeElement;
+  return !!(a&&(a.tagName==='INPUT'||a.tagName==='TEXTAREA'||a.tagName==='SELECT'));
+}
+function scheduleFlush(){ if(!db) return; clearTimeout(flushT); flushT=setTimeout(flush,500); }
+function flush(){
+  if(!db||flushing) return;
+  var ids=[]; for(var x in pending) ids.push(x);
+  if(!ids.length){ updateSync(); return; }
+  flushing=true;
+  var i=0;
+  function later(){ flushing=false; updateSync(); if(pendingCount()) setTimeout(scheduleFlush,6000); }
+  function step(){
+    if(i>=ids.length){ flushing=false; updateSync(); if(pendingCount()) scheduleFlush(); return; }
+    var id=ids[i++], ver=pending[id], pr;
+    function done(){ if(pending[id]===ver){ delete pending[id]; savePending(); } }
+    try{
+      if(id==='config') pr=db.doc('config/program').set(configDoc());
+      else{
+        var ss=S.sessions[idToKey(id)];
+        pr=ss?db.doc('sessions/'+id).set(sessionDoc(ss)):db.doc('sessions/'+id)['delete']();
+      }
+    }catch(err){ lastErr=(err&&err.code)||'poikkeus'; done(); step(); return; }
+    /* roikkumaan jäänyt kirjoitus ei saa pysäyttää lähetystä pysyvästi */
+    pr=Promise.race([pr,new Promise(function(_,rej){ setTimeout(function(){ rej({code:'aikakatkaisu'}); },15000); })]);
+    pr.then(function(){ done(); markWrote(); lastOk=Date.now(); lastErr=''; updateSync(); step(); },
+      function(err){
+        var c=err&&err.code; lastErr=c||'tuntematon';
+        /* verkkovirhe ei tyhjennä jonoa: treeni pysyy odottamassa, kunnes kirjoitus onnistuu */
+        if(c==='invalid_argument') done();
+        later();
+      });
+  }
+  step();
+}
+/* pilven tilannekuvat ovat jäädytettyjä (vain luku): kopioidaan ennen käyttöä, muuten syötön kirjoitus kaatuu */
+function thaw(o){ return JSON.parse(JSON.stringify(o)); }
+function applyConfig(b){
+  if(pending['config']) return false;
+  b=thaw(b);
+  if(b.ex) S.ex=b.ex;
+  if(b.prog&&b.prog.A&&b.prog.P) S.prog=b.prog;
+  S.overrides=b.overrides||{};
+  if(b.theme) S.theme=b.theme;
+  S.names={A:(b.names&&b.names.A)||DEF_NAMES.A,P:(b.names&&b.names.P)||DEF_NAMES.P,R:(b.names&&b.names.R)||DEF_NAMES.R};
+  S.pattern=(b.pattern&&b.pattern.length===7)?b.pattern:DEF_PATTERN.slice();
+  S.altWeeks=(b.altWeeks===undefined)?true:!!b.altWeeks;
+  persist(); applyTheme(); setAccent();
+  return true;
+}
+function applySessions(qs){
+  var seen={}, changed=false, k;
+  qs.docs.forEach(function(d){
+    var id=d.id;
+    if(!/^\d{4}-\d{2}-\d{2}-[AP]$/.test(id)) return;
+    var kk=idToKey(id); seen[kk]=1;
+    if(pending[id]) return;
+    var b=thaw(d.data()||{});
+    var nu={date:b.date||kk.slice(0,10),type:b.type||kk.slice(11),ts:b.ts||0,
+      saved:!!b.saved,entries:b.entries||{},counts:b.counts||{}};
+    /* haku toistuu minuutin välein: piirretään uudelleen vain jos jokin oikeasti muuttui */
+    if(JSON.stringify(S.sessions[kk])===JSON.stringify(nu)) return;
+    S.sessions[kk]=nu;
+    changed=true;
+  });
+  /* välimuistista tuleva tilannekuva voi olla vajaa: ei poisteta sen perusteella mitään */
+  var definitive=!(qs.metadata&&qs.metadata.fromCache);
+  if(definitive&&qs.docs.length) markWrote();
+  if(definitive&&(!everSynced||!wrote)){
+    for(k in S.sessions){ if(!seen[k]) bump(keyToId(k)); }
+    savePending(); markSynced(); scheduleFlush();
+  }else if(definitive){
+    for(k in S.sessions){
+      if(!seen[k]&&!pending[keyToId(k)]){ delete S.sessions[k]; changed=true; }
+    }
+  }
+  persist();
+  if(changed&&!typing()) render();
+  updateSync();
+}
+function updateSync(){
+  var el=document.getElementById('sync'), n=pendingCount();
+  if(el){
+    if(!dbTried){ el.hidden=false; el.className='sync'; el.textContent='Yhdistetään pilveen… ('+VER+')'; }
+    else if(lastErr==='tuntematon_linkki'){ el.hidden=false; el.className='sync warn'; el.textContent='Linkki ei kelpaa — pyydä uusi linkki. Treenit säilyvät vain tässä laitteessa.'; }
+    else if(db&&!n&&!lastOk) el.hidden=true;
+    else if(db&&!n){ el.hidden=false; el.className='sync'; el.textContent='Tallennettu pilveen klo '+clock(lastOk); }
+    else if(!db){ el.hidden=false; el.className='sync warn'; el.textContent='Avaa sovellus omalla linkilläsi — nyt treenit tallentuvat vain tähän laitteeseen'; }
+    else if(lastErr){ el.hidden=false; el.className='sync warn'; el.textContent='Pilveen tallennus epäonnistui ('+lastErr+') — yritetään uudelleen'; }
+    else{ el.hidden=false; el.className='sync'; el.textContent='Tallennetaan pilveen…'; }
+  }
+  var note=document.getElementById('syncNote');
+  if(note){
+    note.textContent = '['+VER+'] '+(!dbTried ? 'Yhdistetään…'
+      : !db ? 'Ei käytössä: sovellus on avattu ilman omaa linkkiä. Data on vain tämän selaimen muistissa — ota varmuuskopio.'
+      : lastErr==='tuntematon_linkki' ? 'Linkki ei kelpaa — pyydä uusi linkki. Data on vain tämän selaimen muistissa.'
+      : n ? ('Lähettämättä '+n+' muutosta. Lähtevät heti kun yhteys toimii.'+(lastErr?' Viimeisin virhe: '+lastErr+'.':''))
+      : 'Kaikki tallennettu'+(lastOk?' (viimeksi klo '+clock(lastOk)+')':'')+'. Sama data avautuu muillakin laitteillasi.');
+  }
+  var btn=document.getElementById('syncBtn');
+  if(btn) btn.disabled=!db;
+  var ver=document.getElementById('ver');
+  if(ver&&ver.textContent.indexOf('VIRHE')<0) ver.textContent=VER+' · pilvi: '+(!dbTried?'yhdistetään':db?'yhteys ok':'ei yhteyttä');
+}
+function rpc(fn,body){
+  body.p_code=CODE;
+  return fetch(SB_URL+fn,{method:'POST',headers:{'apikey':SB_KEY,'Content-Type':'application/json'},body:JSON.stringify(body),keepalive:true})
+    .then(function(r){
+      return r.json().then(function(j){
+        if(!r.ok) throw {code:(j&&j.message==='invalid_argument')?'invalid_argument':'http_'+r.status};
+        if(!j||!j.ok) throw {code:'tuntematon_linkki'};
+        return j;
+      },function(){ throw {code:'http_'+r.status}; });
+    },function(){ throw {code:'ei_verkkoa'}; });
+}
+/* sama rajapinta kuin aiemmalla tietokannalla: doc().set/delete ja onSnapshot, mutta tilannekuvat haetaan kyselemällä */
+function makeDb(){
+  var cfgCb=null, sessCb=null, gen=0, pulling=false;
+  function pull(){
+    if(pulling) return;
+    pulling=true;
+    var g=gen;
+    rpc('treeni_pull',{}).then(function(j){
+      pulling=false;
+      /* haun aikana tehty kirjoitus tekee kuvasta vanhentuneen: sen perusteella ei saa poistaa mitään */
+      if(g!==gen){ setTimeout(pull,1500); return; }
+      if(lastErr&&!pendingCount()) lastErr='';
+      var docs=j.docs||{}, list=[];
+      Object.keys(docs).forEach(function(id){ if(id!=='config') list.push({id:id,data:function(){ return docs[id]; }}); });
+      if(cfgCb) cfgCb({exists:!!docs.config,data:function(){ return docs.config; }});
+      if(sessCb) sessCb({docs:list,metadata:{fromCache:false}});
+    },function(err){ pulling=false; lastErr=(err&&err.code)||'tuntematon'; updateSync(); });
+  }
+  function write(fn,body){
+    gen++;
+    return rpc(fn,body).then(function(j){ gen++; return j; },function(e){ gen++; throw e; });
+  }
+  return {
+    doc:function(path){
+      var id=(path==='config/program')?'config':path.slice(9);
+      return {
+        set:function(d){ return write('treeni_put',{p_id:id,p_data:d}); },
+        'delete':function(){ return write('treeni_del',{p_id:id}); },
+        onSnapshot:function(cb){ cfgCb=cb; }
+      };
+    },
+    collection:function(){ return {onSnapshot:function(cb){ sessCb=cb; }}; },
+    pull:pull
+  };
+}
+var cfgAt=null;
+function initDb(){
+  dbTried=true;
+  if(!CODE||!window.fetch){ updateSync(); return; }
+  db=makeDb();
+  db.doc('config/program').onSnapshot(function(sn){
+    if(sn.exists){
+      var d=sn.data()||{};
+      if(d.updatedAt!==cfgAt){ cfgAt=d.updatedAt; if(applyConfig(d)&&!typing()) render(); }
+    }
+    else if(!everSynced) markDirty('config');
+    updateSync();
+  });
+  db.collection('sessions').onSnapshot(applySessions);
+  db.pull();
+  setInterval(function(){ if(!document.hidden) db.pull(); },60000);
+  scheduleFlush(); updateSync();
+}
+
+/* sovellusta suljettaessa lähetetään heti, ei odoteta ajastinta */
+function flushNow(){ if(db&&pendingCount()){ clearTimeout(flushT); flush(); } }
+document.addEventListener('visibilitychange',function(){ if(document.hidden) flushNow(); else{ if(pendingCount()) scheduleFlush(); if(db) db.pull(); } });
+window.addEventListener('pagehide',flushNow);
+document.addEventListener('focusout',function(e){ if(e.target.matches&&e.target.matches('input[data-f]')) flushNow(); });
+window.addEventListener('online',function(){ if(pendingCount()) scheduleFlush(); if(db) db.pull(); });
+
+/* ---------- navigointi ---------- */
+document.getElementById('nav').addEventListener('click',function(e){
+  var b=e.target.closest('.tab'); if(b) go(b.dataset.v);
+});
+document.getElementById('strip').addEventListener('click',function(e){
+  var b=e.target.closest('.day'); if(!b) return;
+  cur=b.dataset.iso; setAccent(); renderStrip(); renderDay();
+});
+document.getElementById('prevW').addEventListener('click',function(){ cur=addDays(cur,-7); setAccent(); renderStrip(); renderDay(); });
+document.getElementById('nextW').addEventListener('click',function(){ cur=addDays(cur,7); setAccent(); renderStrip(); renderDay(); });
+
+applyTheme(); go('treeni'); updateSync(); initDb();
+})();
+</script>
+</body>
+</html>
