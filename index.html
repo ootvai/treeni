@@ -109,6 +109,7 @@ input,select,textarea{font-family:inherit;font-size:17px;color:var(--txt)}
 .ex-ft{display:flex;gap:8px;padding:0 12px 11px;flex-wrap:wrap}
 .mini{border:1px solid var(--line);background:var(--bg3);color:var(--txt2);border-radius:9px;padding:8px 11px;font-size:14px;font-weight:600}
 .mini:active{background:var(--bg4)}
+.ex-hd .orig{display:block;font-family:'Barlow',sans-serif;font-size:12.5px;font-weight:600;letter-spacing:.02em;color:var(--acc);margin-top:4px}
 
 /* napit */
 .primary{width:100%;border:none;border-radius:14px;background:var(--acc);color:#0d1016;font-family:'Barlow Condensed',sans-serif;font-size:23px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;padding:17px 14px;margin-top:18px;box-shadow:var(--shadow)}
@@ -189,6 +190,15 @@ td:last-child,th:last-child{padding-right:0}
 #modal p{margin:0 0 16px;font-size:16px}
 #modal .pair button{background:var(--bg3);color:var(--txt);font-size:17px;text-transform:none;font-family:'Barlow',sans-serif}
 #modal .pair button.dgb{color:var(--danger);border-color:rgba(239,106,106,.5)}
+#modal .box.wide{width:min(420px,calc(100vw - 40px));max-width:none;max-height:calc(100vh - 40px);display:flex;flex-direction:column}
+#modal h3{font-size:22px;text-transform:uppercase;margin:0 0 4px}
+#modal .addrow{margin:0 0 10px}
+#modal .addrow input{width:0}
+.picklist{overflow-y:auto;-webkit-overflow-scrolling:touch;min-height:0;flex:1 1 auto;margin:0 0 14px;border:1px solid var(--line);border-radius:11px}
+.picklist button{display:block;width:100%;text-align:left;background:none;border:none;border-bottom:1px solid var(--line);padding:13px 12px;font-size:16px;font-weight:600}
+.picklist button:last-child{border-bottom:none}
+.picklist button:active{background:var(--bg3)}
+.picklist small{color:var(--muted);font-weight:500;font-size:12.5px;margin-left:6px}
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
 @media (max-width:359px){.grp{flex-basis:118px}.stp{width:34px}.fld{padding:0 7px}}
 </style>
@@ -201,7 +211,7 @@ td:last-child,th:last-child{padding-right:0}
   </div>
   <div class="strip" id="strip"></div>
   <div class="sync" id="sync" hidden></div>
-  <div class="ver" id="ver">w2 · käynnistyy…</div>
+  <div class="ver" id="ver">w3 · käynnistyy…</div>
 </div></div>
 
 <main class="wrap">
@@ -223,7 +233,7 @@ td:last-child,th:last-child{padding-right:0}
 <script>
 /* vianetsintä: näytetään kaatuminen ruudulla, koska puhelimen konsolia ei näe */
 (function(){
-  function show(m){ var v=document.getElementById('ver'); if(v) v.textContent='w2 · VIRHE: '+m; }
+  function show(m){ var v=document.getElementById('ver'); if(v) v.textContent='w3 · VIRHE: '+m; }
   window.addEventListener('error',function(e){ show((e.message||'?')+' @'+(e.lineno||'?')+':'+(e.colno||'?')); });
   window.addEventListener('unhandledrejection',function(e){ var r=e.reason; show('lupaus: '+((r&&(r.code||r.message))||r)); });
 })();
@@ -316,9 +326,11 @@ function sess(iso,t){return S.sessions[skey(iso,t)]||null;}
 function ensure(iso,t){
   var k=skey(iso,t), s=S.sessions[k];
   if(!s){ s={date:iso,type:t,ts:0,saved:false,entries:{},counts:{}}; S.sessions[k]=s; }
-  s.counts=s.counts||{};
+  s.counts=s.counts||{}; s.swaps=s.swaps||{};
   return s;
 }
+/* päiväkohtainen liikevaihto: ohjelman paikka (slot) -> tänään tehtävä liike */
+function eidOf(s,slot){ var e=s&&s.swaps&&s.swaps[slot]; return (e&&S.ex[e])?e:slot; }
 function typeFor(iso){ return S.overrides[iso]||planFor(iso); }
 /* puolittain tehty sarja: reps = vasen, reps2 = oikea (tyhjä = sama kuin vasen); tilastoissa puolten keskiarvo */
 function r2(r){ return (r&&r.reps2!=null)?r.reps2:''; }
@@ -336,10 +348,10 @@ function rowsOf(s,id){ return (s&&s.entries[id])||[]; }
 function volOf(rows){ var v=0; rows.forEach(function(r){var k=num(r.kg),t=eff(r); if(isFinite(k)&&isFinite(t)) v+=k*t;}); return v; }
 function topOf(rows){ var m=NaN; rows.forEach(function(r){var k=num(r.kg); if(isFinite(k)&&(!isFinite(m)||k>m)) m=k;}); return m; }
 function repsOf(rows){ var v=0; rows.forEach(function(r){var t=eff(r); if(isFinite(t)) v+=t;}); return v; }
-function setCount(s,p){
-  var c=s&&s.counts?s.counts[p.id]:0;
+function setCount(s,id,sets){
+  var c=s&&s.counts?s.counts[id]:0;
   if(c) return Math.max(1,c);
-  return Math.max(p.sets,rowsOf(s,p.id).length);
+  return Math.max(sets,rowsOf(s,id).length);
 }
 function savedSessions(){
   var out=[]; for(var k in S.sessions){ var s=S.sessions[k]; if(s.saved&&hasData(s)) out.push(s); }
@@ -459,14 +471,16 @@ function renderDay(){
   if(!list.length) h+='<p class="empty">Tässä splitissä ei ole liikkeitä. Lisää ne Asetukset-välilehdellä.</p>';
 
   list.forEach(function(p){
-    var ex=S.ex[p.id]; if(!ex) return;
-    var rows=rowsOf(s,p.id), n=setCount(s,p), lp=lastPerf(p.id,cur,key);
+    var eid=eidOf(s,p.id), ex=S.ex[eid]; if(!ex) return;
+    var swapped=(eid!==p.id), orig=S.ex[p.id];
+    var rows=rowsOf(s,eid), n=setCount(s,eid,p.sets), lp=lastPerf(eid,cur,key);
     var uni=!!ex.uni||rows.some(function(x){ return r2(x)!==''; });
-    h+='<article class="ex"><div class="ex-hd"><h3>'+esc(ex.name)+'</h3>'+
+    h+='<article class="ex"><div class="ex-hd"><h3>'+esc(ex.name)+
+       (swapped?'<span class="orig">Vaihdettu tälle päivälle · ohjelmassa '+esc(orig?orig.name:'?')+'</span>':'')+'</h3>'+
        '<span class="last">'+(lp?'viimeksi '+dm(lp.date):'ei historiaa')+'</span></div><div class="sets">';
     for(var i=0;i<n;i++){
-      var r=rows[i]||{kg:'',reps:''}, iid='i-'+t+'-'+p.id+'-'+i;
-      h+='<div class="set" data-ex="'+p.id+'" data-i="'+i+'">'+
+      var r=rows[i]||{kg:'',reps:''}, iid='i-'+t+'-'+eid+'-'+i;
+      h+='<div class="set" data-ex="'+eid+'" data-i="'+i+'">'+
         '<div class="set-top"><span class="setno">Sarja '+(i+1)+'</span>'+prevText(lp,i)+'<span class="trend"></span></div>'+
         '<div class="set-in'+(uni?' uni':'')+'">'+
           '<div class="grp"><button class="stp" type="button" data-adj="kg" data-d="-1" aria-label="Vähennä painoa">−</button>'+
@@ -481,10 +495,12 @@ function renderDay(){
         '</div></div>';
     }
     h+='</div><div class="ex-ft">'+
-       (lp?'<button class="mini" data-act="copy" data-ex="'+p.id+'">Sama kuin viimeksi</button>':'')+
-       '<button class="mini" data-act="addset" data-ex="'+p.id+'">+ sarja</button>'+
-       (n>1?'<button class="mini" data-act="delset" data-ex="'+p.id+'">− sarja</button>':'')+
-       '<button class="mini" data-act="uni" data-ex="'+p.id+'">'+(uni?'Yksi toistomäärä':'Puolet erikseen')+'</button>'+
+       (lp?'<button class="mini" data-act="copy" data-slot="'+p.id+'">Sama kuin viimeksi</button>':'')+
+       '<button class="mini" data-act="addset" data-slot="'+p.id+'">+ sarja</button>'+
+       (n>1?'<button class="mini" data-act="delset" data-slot="'+p.id+'">− sarja</button>':'')+
+       '<button class="mini" data-act="uni" data-slot="'+p.id+'">'+(uni?'Yksi toistomäärä':'Puolet erikseen')+'</button>'+
+       '<button class="mini" data-act="swap" data-slot="'+p.id+'">⇄ Vaihda liike</button>'+
+       (swapped?'<button class="mini" data-act="unswap" data-slot="'+p.id+'">Palauta '+esc(orig?orig.name:'alkuperäinen')+'</button>':'')+
        '</div></article>';
   });
 
@@ -552,9 +568,11 @@ V.treeni.addEventListener('click',function(e){
     persistSess(); renderStrip(); renderDay(); toast('Treeni tallennettu'); return;
   }
   var act=b.dataset.act; if(!act) return;
-  var id=b.dataset.ex, prog=S.prog[t].filter(function(x){return x.id===id;})[0];
+  var slot=b.dataset.slot, prog=S.prog[t].filter(function(x){return x.id===slot;})[0];
   if(!prog) return;
-  var s2=ensure(cur,t), n=setCount(s2,prog);
+  if(act==='swap'){ swapDialog(t,slot); return; }
+  if(act==='unswap'){ applySwap(t,slot,slot,'day'); toast('Alkuperäinen liike palautettu'); return; }
+  var s2=ensure(cur,t), id=eidOf(s2,slot), n=setCount(s2,id,prog.sets);
   if(act==='copy'){
     var lp=lastPerf(id,cur,skey(cur,t)); if(!lp) return;
     s2.entries[id]=lp.rows.map(function(r){ var o={kg:r.kg,reps:r.reps}; if(r2(r)!=='') o.reps2=r.reps2; return o; });
@@ -575,6 +593,75 @@ V.treeni.addEventListener('click',function(e){
     persistCfg(); persistSess(); renderDay();
   }
 });
+
+/* ---------- liikkeen vaihto päivänäkymästä ---------- */
+/* scope 'day' = vain tämä treenipäivä, 'prog' = korvaa liikkeen pysyvästi ohjelmassa.
+   Jo syötetyt sarjat siirtyvät uudelle liikkeelle, joten mitään ei katoa. */
+function applySwap(t,slot,newId,scope){
+  var s=ensure(cur,t), from=eidOf(s,slot);
+  if(from!==newId){
+    if(s.entries[from]){ s.entries[newId]=s.entries[from]; delete s.entries[from]; }
+    if(s.counts[from]){ s.counts[newId]=s.counts[from]; delete s.counts[from]; }
+  }
+  delete s.swaps[slot];
+  if(scope==='prog'){
+    S.prog[t].forEach(function(p){ if(p.id===slot) p.id=newId; });
+    persistCfg();
+  }else if(newId!==slot){
+    s.swaps[slot]=newId;
+  }
+  persistSess(); renderDay();
+}
+function swapDialog(t,slot){
+  var s=sess(cur,t), eid=eidOf(s,slot), taken={}, scope='day';
+  S.prog[t].forEach(function(p){ if(p.id!==slot){ taken[p.id]=1; taken[eidOf(s,p.id)]=1; } });
+  var ids=Object.keys(S.ex).filter(function(id){ return !taken[id]&&!(id===slot&&eid===slot); });
+  ids.sort(function(a,b){ return S.ex[a].name.localeCompare(S.ex[b].name,'fi'); });
+  var h='<div class="box wide"><h3>Vaihda liike</h3>'+
+    '<p class="hint" style="margin:0 0 12px">Nyt: <b>'+esc(S.ex[eid].name)+'</b>'+(eid!==slot?' (ohjelmassa '+esc(S.ex[slot].name)+')':'')+'</p>'+
+    '<div class="seg"><button data-sc="day" aria-pressed="true">Vain tämä päivä</button><button data-sc="prog" aria-pressed="false">Pysyvästi ohjelmaan</button></div>'+
+    '<div class="addrow"><input id="swNew" placeholder="Uusi liike, esim. Käsipaino vinopenkki" aria-label="Uuden liikkeen nimi" autocomplete="off">'+
+    '<button data-swnew="1">Valitse</button></div>';
+  if(ids.length){
+    h+='<div class="picklist">';
+    ids.forEach(function(id){
+      var tag=(id===slot)?'ohjelmassa':(id===eid)?'tänään':'';
+      h+='<button data-pick="'+id+'">'+esc(S.ex[id].name)+(tag?'<small>'+tag+'</small>':'')+'</button>';
+    });
+    h+='</div>';
+  }else{
+    h+='<p class="hint" style="margin:0 0 14px">Ei muita tallennettuja liikkeitä — kirjoita uusi yllä.</p>';
+  }
+  h+='<div class="pair"><button data-x="0">Peruuta</button></div></div>';
+  modal.innerHTML=h; modal.hidden=false;
+  var inp=document.getElementById('swNew');
+  function finish(id){
+    modal.hidden=true;
+    applySwap(t,slot,id,scope);
+    toast((scope==='prog'?'Ohjelma päivitetty: ':'Tälle päivälle: ')+S.ex[id].name);
+  }
+  function addNew(){
+    var name=(inp.value||'').trim(); if(!name){ inp.focus(); return; }
+    var low=name.toLowerCase(), id=null;
+    for(var k in S.ex){ if(S.ex[k].name.trim().toLowerCase()===low){ id=k; break; } }
+    if(id&&taken[id]){ toast(S.ex[id].name+' on jo tämän päivän ohjelmassa'); return; }
+    if(!id){ id=slug(name); S.ex[id]={id:id,name:name}; persistCfg(); }
+    finish(id);
+  }
+  inp.addEventListener('keydown',function(e){ if(e.key==='Enter'){ e.preventDefault(); addNew(); } });
+  modal.onclick=function(e){
+    if(e.target===modal){ modal.hidden=true; return; }
+    var b=e.target.closest('button'); if(!b) return;
+    if(b.dataset.sc){
+      scope=b.dataset.sc;
+      [].forEach.call(modal.querySelectorAll('[data-sc]'),function(x){ x.setAttribute('aria-pressed',String(x===b)); });
+      return;
+    }
+    if(b.dataset.x){ modal.hidden=true; return; }
+    if(b.dataset.pick){ finish(b.dataset.pick); return; }
+    if(b.dataset.swnew) addNew();
+  };
+}
 
 /* ---------- historia ---------- */
 var hSel=null, hMetric='top', chart=null;
@@ -834,7 +921,7 @@ V.asetukset.addEventListener('click',function(e){
 });
 
 /* ---------- pilvitallennus (Supabase) ---------- */
-var PKEY='treeni.pending', SKEY='treeni.synced', VER='w2', WKEY='treeni.wrote';
+var PKEY='treeni.pending', SKEY='treeni.synced', VER='w3', WKEY='treeni.wrote';
 var SB_URL='https://ijzurdaldczkjlabcchc.supabase.co/rest/v1/rpc/', SB_KEY='sb_publishable_BXr_11KXalN0nVp65OTjxw_s6tt6bQF';
 var db=null, dbTried=false, everSynced=false, wrote=false, pending={}, flushT=null, flushing=false, lastOk=0, lastErr='';
 try{ pending=JSON.parse(localStorage.getItem(PKEY)||'{}')||{}; }catch(e){ pending={}; }
@@ -846,7 +933,7 @@ function markSynced(){ everSynced=true; try{ localStorage.setItem(SKEY,'1'); }ca
 function keyToId(k){ return k.replace('|','-'); }
 function idToKey(id){ return id.slice(0,10)+'|'+id.slice(11); }
 function pendingCount(){ var n=0; for(var x in pending) n++; return n; }
-function sessionDoc(s){ return {date:s.date,type:s.type,ts:s.ts||0,saved:!!s.saved,entries:s.entries||{},counts:s.counts||{}}; }
+function sessionDoc(s){ return {date:s.date,type:s.type,ts:s.ts||0,saved:!!s.saved,entries:s.entries||{},counts:s.counts||{},swaps:s.swaps||{}}; }
 function configDoc(){ return {ex:S.ex,prog:S.prog,overrides:S.overrides||{},theme:S.theme||'dark',names:S.names,pattern:S.pattern,altWeeks:S.altWeeks,updatedAt:Date.now()}; }
 /* pending[id] on versiolaskuri: kirjoituksen valmistuessa merkki poistetaan vain jos sitä ei ole sillä välin muutettu */
 var seq=0; for(var pk in pending) seq=Math.max(seq,+pending[pk]||0);
@@ -921,7 +1008,7 @@ function applySessions(qs){
     if(pending[id]) return;
     var b=thaw(d.data()||{});
     var nu={date:b.date||kk.slice(0,10),type:b.type||kk.slice(11),ts:b.ts||0,
-      saved:!!b.saved,entries:b.entries||{},counts:b.counts||{}};
+      saved:!!b.saved,entries:b.entries||{},counts:b.counts||{},swaps:b.swaps||{}};
     /* haku toistuu minuutin välein: piirretään uudelleen vain jos jokin oikeasti muuttui */
     if(JSON.stringify(S.sessions[kk])===JSON.stringify(nu)) return;
     S.sessions[kk]=nu;
@@ -1054,3 +1141,4 @@ applyTheme(); go('treeni'); updateSync(); initDb();
 </script>
 </body>
 </html>
+
