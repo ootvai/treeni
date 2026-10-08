@@ -95,6 +95,9 @@ input,select,textarea{font-family:inherit;font-size:17px;color:var(--txt)}
 .trend{font-size:13px;font-weight:700;min-width:12px}
 .trend.up{color:var(--ok)} .trend.dn{color:var(--down)}
 .set-in{display:flex;gap:8px}
+.set-in.uni{flex-wrap:wrap}
+.set-in.uni .grp{flex:1 1 calc(50% - 4px)}
+.set-in.uni .grp.side2{flex:0 0 calc(50% - 4px);margin-left:auto}
 .grp{flex:1 1 140px;display:flex;align-items:stretch;gap:5px;min-width:0}
 .stp{width:38px;flex:none;border:1px solid var(--line);background:var(--bg3);border-radius:10px;font-size:21px;font-weight:600;line-height:1;color:var(--txt2);display:grid;place-items:center}
 .stp:active{background:var(--bg4)}
@@ -198,7 +201,7 @@ td:last-child,th:last-child{padding-right:0}
   </div>
   <div class="strip" id="strip"></div>
   <div class="sync" id="sync" hidden></div>
-  <div class="ver" id="ver">w1 · käynnistyy…</div>
+  <div class="ver" id="ver">w2 · käynnistyy…</div>
 </div></div>
 
 <main class="wrap">
@@ -220,7 +223,7 @@ td:last-child,th:last-child{padding-right:0}
 <script>
 /* vianetsintä: näytetään kaatuminen ruudulla, koska puhelimen konsolia ei näe */
 (function(){
-  function show(m){ var v=document.getElementById('ver'); if(v) v.textContent='w1 · VIRHE: '+m; }
+  function show(m){ var v=document.getElementById('ver'); if(v) v.textContent='w2 · VIRHE: '+m; }
   window.addEventListener('error',function(e){ show((e.message||'?')+' @'+(e.lineno||'?')+':'+(e.colno||'?')); });
   window.addEventListener('unhandledrejection',function(e){ var r=e.reason; show('lupaus: '+((r&&(r.code||r.message))||r)); });
 })();
@@ -317,7 +320,11 @@ function ensure(iso,t){
   return s;
 }
 function typeFor(iso){ return S.overrides[iso]||planFor(iso); }
-function filled(r){ return !!r&&(r.kg!==''||r.reps!==''); }
+/* puolittain tehty sarja: reps = vasen, reps2 = oikea (tyhjä = sama kuin vasen); tilastoissa puolten keskiarvo */
+function r2(r){ return (r&&r.reps2!=null)?r.reps2:''; }
+function eff(r){ var a=num(r.reps), b=num(r2(r)); return !isFinite(b)?a:!isFinite(a)?b:(a+b)/2; }
+function repsTxt(r){ var a=r.reps, b=r2(r); return (a===''?'–':a)+(b!==''&&b!==a?'/'+b:''); }
+function filled(r){ return !!r&&(r.kg!==''||r.reps!==''||r2(r)!==''); }
 function hasData(s){
   if(!s) return false;
   for(var id in s.entries){ var a=s.entries[id]; for(var i=0;i<a.length;i++) if(filled(a[i])) return true; }
@@ -326,9 +333,9 @@ function hasData(s){
 function num(v){ if(v===''||v==null) return NaN; var n=parseFloat(String(v).replace(',','.')); return isFinite(n)?n:NaN; }
 function fmtN(n){ return (Math.round(n*100)/100).toString().replace('.',','); }
 function rowsOf(s,id){ return (s&&s.entries[id])||[]; }
-function volOf(rows){ var v=0; rows.forEach(function(r){var k=num(r.kg),t=num(r.reps); if(isFinite(k)&&isFinite(t)) v+=k*t;}); return v; }
+function volOf(rows){ var v=0; rows.forEach(function(r){var k=num(r.kg),t=eff(r); if(isFinite(k)&&isFinite(t)) v+=k*t;}); return v; }
 function topOf(rows){ var m=NaN; rows.forEach(function(r){var k=num(r.kg); if(isFinite(k)&&(!isFinite(m)||k>m)) m=k;}); return m; }
-function repsOf(rows){ var v=0; rows.forEach(function(r){var t=num(r.reps); if(isFinite(t)) v+=t;}); return v; }
+function repsOf(rows){ var v=0; rows.forEach(function(r){var t=eff(r); if(isFinite(t)) v+=t;}); return v; }
 function setCount(s,p){
   var c=s&&s.counts?s.counts[p.id]:0;
   if(c) return Math.max(1,c);
@@ -431,7 +438,7 @@ function prevText(lp,i){
   if(!lp) return '<span class="prev">ei aiempaa</span>';
   var r=lp.rows[i];
   if(!r) return '<span class="prev">'+dm(lp.date)+': –</span>';
-  var kg=(r.kg===''?'–':fmtN(num(r.kg))+' kg'), rp=(r.reps===''?'–':r.reps);
+  var kg=(r.kg===''?'–':fmtN(num(r.kg))+' kg'), rp=repsTxt(r);
   return '<span class="prev">ed. <b>'+esc(kg)+' × '+esc(rp)+'</b></span>';
 }
 function renderDay(){
@@ -454,25 +461,30 @@ function renderDay(){
   list.forEach(function(p){
     var ex=S.ex[p.id]; if(!ex) return;
     var rows=rowsOf(s,p.id), n=setCount(s,p), lp=lastPerf(p.id,cur,key);
+    var uni=!!ex.uni||rows.some(function(x){ return r2(x)!==''; });
     h+='<article class="ex"><div class="ex-hd"><h3>'+esc(ex.name)+'</h3>'+
        '<span class="last">'+(lp?'viimeksi '+dm(lp.date):'ei historiaa')+'</span></div><div class="sets">';
     for(var i=0;i<n;i++){
       var r=rows[i]||{kg:'',reps:''}, iid='i-'+t+'-'+p.id+'-'+i;
       h+='<div class="set" data-ex="'+p.id+'" data-i="'+i+'">'+
         '<div class="set-top"><span class="setno">Sarja '+(i+1)+'</span>'+prevText(lp,i)+'<span class="trend"></span></div>'+
-        '<div class="set-in">'+
+        '<div class="set-in'+(uni?' uni':'')+'">'+
           '<div class="grp"><button class="stp" type="button" data-adj="kg" data-d="-1" aria-label="Vähennä painoa">−</button>'+
             '<label class="fld" for="'+iid+'-kg"><input id="'+iid+'-kg" type="text" inputmode="decimal" autocomplete="off" placeholder="0" data-f="kg" value="'+esc(r.kg)+'"><span class="u">kg</span></label>'+
             '<button class="stp" type="button" data-adj="kg" data-d="1" aria-label="Lisää painoa">+</button></div>'+
           '<div class="grp"><button class="stp" type="button" data-adj="reps" data-d="-1" aria-label="Vähennä toistoja">−</button>'+
-            '<label class="fld" for="'+iid+'-reps"><span class="u">×</span><input id="'+iid+'-reps" type="text" inputmode="numeric" autocomplete="off" placeholder="0" data-f="reps" value="'+esc(r.reps)+'"></label>'+
+            '<label class="fld" for="'+iid+'-reps"><span class="u">'+(uni?'V ×':'×')+'</span><input id="'+iid+'-reps" type="text" inputmode="numeric" autocomplete="off" placeholder="0" data-f="reps" value="'+esc(r.reps)+'"></label>'+
             '<button class="stp" type="button" data-adj="reps" data-d="1" aria-label="Lisää toistoja">+</button></div>'+
+          (uni?'<div class="grp side2"><button class="stp" type="button" data-adj="reps2" data-d="-1" aria-label="Vähennä oikean puolen toistoja">−</button>'+
+            '<label class="fld" for="'+iid+'-reps2"><span class="u">O ×</span><input id="'+iid+'-reps2" type="text" inputmode="numeric" autocomplete="off" placeholder="'+esc(r.reps||'0')+'" data-f="reps2" value="'+esc(r2(r))+'"></label>'+
+            '<button class="stp" type="button" data-adj="reps2" data-d="1" aria-label="Lisää oikean puolen toistoja">+</button></div>':'')+
         '</div></div>';
     }
     h+='</div><div class="ex-ft">'+
        (lp?'<button class="mini" data-act="copy" data-ex="'+p.id+'">Sama kuin viimeksi</button>':'')+
        '<button class="mini" data-act="addset" data-ex="'+p.id+'">+ sarja</button>'+
        (n>1?'<button class="mini" data-act="delset" data-ex="'+p.id+'">− sarja</button>':'')+
+       '<button class="mini" data-act="uni" data-ex="'+p.id+'">'+(uni?'Yksi toistomäärä':'Puolet erikseen')+'</button>'+
        '</div></article>';
   });
 
@@ -484,10 +496,11 @@ function renderDay(){
 }
 function markSet(setEl){
   var tr=setEl.querySelector('.trend'); tr.className='trend'; tr.textContent='';
-  var kg=num(setEl.querySelector('[data-f="kg"]').value), rp=num(setEl.querySelector('[data-f="reps"]').value);
+  var i2=setEl.querySelector('[data-f="reps2"]');
+  var kg=num(setEl.querySelector('[data-f="kg"]').value), rp=eff({reps:setEl.querySelector('[data-f="reps"]').value.trim(),reps2:i2?i2.value.trim():''});
   var pv=setEl.querySelector('.prev b'); if(!pv||!isFinite(kg)||!isFinite(rp)) return;
-  var m=pv.textContent.match(/^([\d,.]+) kg × (\d+)/); if(!m) return;
-  var was=num(m[1])*(+m[2]), now=kg*rp;
+  var m=pv.textContent.match(/^([\d,.]+) kg × (\d+)(?:\/(\d+))?/); if(!m) return;
+  var was=num(m[1])*((+m[2])+(+(m[3]||m[2])))/2, now=kg*rp;
   if(now>was){ tr.className='trend up'; tr.textContent='▲'; }
   else if(now<was){ tr.className='trend dn'; tr.textContent='▼'; }
 }
@@ -507,6 +520,7 @@ V.treeni.addEventListener('input',function(e){
   var arr=s.entries[id]||(s.entries[id]=[]);
   while(arr.length<=i) arr.push({kg:'',reps:''});
   arr[i][inp.dataset.f]=inp.value.trim();
+  if(inp.dataset.f==='reps'){ var o2=set.querySelector('[data-f="reps2"]'); if(o2) o2.placeholder=inp.value.trim()||'0'; }
   persistSess(); markSet(set); updateSave();
 });
 V.treeni.addEventListener('click',function(e){
@@ -522,8 +536,10 @@ V.treeni.addEventListener('click',function(e){
     var set=b.closest('.set'), fld=b.dataset.adj, d=+b.dataset.d;
     var inp=set.querySelector('[data-f="'+fld+'"]'), step=(fld==='kg'?2.5:1), v=num(inp.value);
     if(!isFinite(v)){
-      var pv=set.querySelector('.prev b'), m=pv?pv.textContent.match(/^([\d,.]+) kg × (\d+)/):null;
-      v=m?(fld==='kg'?num(m[1]):+m[2]):(d>0?step:0);
+      var pv=set.querySelector('.prev b'), m=pv?pv.textContent.match(/^([\d,.]+) kg × (\d+)(?:\/(\d+))?/):null;
+      var side=(fld==='reps2')?num(set.querySelector('[data-f="reps"]').value):NaN;
+      if(isFinite(side)) v=side+d;
+      else v=m?(fld==='kg'?num(m[1]):fld==='reps2'?+(m[3]||m[2]):+m[2]):(d>0?step:0);
     }else{ v=v+d*step; }
     if(!(v>0)) v=0;
     inp.value=fmtN(v);
@@ -541,7 +557,7 @@ V.treeni.addEventListener('click',function(e){
   var s2=ensure(cur,t), n=setCount(s2,prog);
   if(act==='copy'){
     var lp=lastPerf(id,cur,skey(cur,t)); if(!lp) return;
-    s2.entries[id]=lp.rows.map(function(r){ return {kg:r.kg,reps:r.reps}; });
+    s2.entries[id]=lp.rows.map(function(r){ var o={kg:r.kg,reps:r.reps}; if(r2(r)!=='') o.reps2=r.reps2; return o; });
     s2.counts[id]=Math.max(n,lp.rows.length);
     persistSess(); renderDay(); toast('Edelliset arvot kopioitu');
   }else if(act==='addset'){
@@ -551,6 +567,12 @@ V.treeni.addEventListener('click',function(e){
     s2.counts[id]=nn;
     if(s2.entries[id]&&s2.entries[id].length>nn) s2.entries[id]=s2.entries[id].slice(0,nn);
     persistSess(); renderDay(); updateSave();
+  }else if(act==='uni'){
+    var ex=S.ex[id], rs=s2.entries[id]||[];
+    var on=!(ex.uni||rs.some(function(r){ return r2(r)!==''; }));
+    ex.uni=on;
+    if(!on) rs.forEach(function(r){ delete r.reps2; });
+    persistCfg(); persistSess(); renderDay();
   }
 });
 
@@ -612,11 +634,11 @@ function renderHistory(){
       var r=d[i], prev=(i>0?d[i-1]:null);
       var arrow=prev?(r.vol>prev.vol?' <span class="trend up">▲</span>':r.vol<prev.vol?' <span class="trend dn">▼</span>':''):'';
       h+='<tr><td>'+dm(r.date)+' <span class="tag '+r.type+'">'+r.type+'</span></td>'+
-         '<td>'+r.rows.map(function(x){ return (x.kg===''?'–':fmtN(num(x.kg)))+' × '+(x.reps===''?'–':esc(x.reps)); }).join(' &nbsp; ')+'</td>'+
+         '<td>'+r.rows.map(function(x){ return (x.kg===''?'–':fmtN(num(x.kg)))+' × '+esc(repsTxt(x)); }).join(' &nbsp; ')+'</td>'+
          '<td>'+(isFinite(r.top)?fmtN(r.top)+' kg':'–')+'</td>'+
          '<td>'+fmtN(r.vol)+arrow+'</td></tr>';
     }
-    h+='</tbody></table></div><p class="hint">Volyymi = paino × toistot yhteensä. Nuoli vertaa edelliseen kertaan.</p></div>';
+    h+='</tbody></table></div><p class="hint">Volyymi = paino × toistot yhteensä. Jos puolet on kirjattu erikseen (esim. 10/8), lasketaan puolten keskiarvolla. Nuoli vertaa edelliseen kertaan.</p></div>';
   }
   h+='</div>';
 
@@ -812,7 +834,7 @@ V.asetukset.addEventListener('click',function(e){
 });
 
 /* ---------- pilvitallennus (Supabase) ---------- */
-var PKEY='treeni.pending', SKEY='treeni.synced', VER='w1', WKEY='treeni.wrote';
+var PKEY='treeni.pending', SKEY='treeni.synced', VER='w2', WKEY='treeni.wrote';
 var SB_URL='https://ijzurdaldczkjlabcchc.supabase.co/rest/v1/rpc/', SB_KEY='sb_publishable_BXr_11KXalN0nVp65OTjxw_s6tt6bQF';
 var db=null, dbTried=false, everSynced=false, wrote=false, pending={}, flushT=null, flushing=false, lastOk=0, lastErr='';
 try{ pending=JSON.parse(localStorage.getItem(PKEY)||'{}')||{}; }catch(e){ pending={}; }
