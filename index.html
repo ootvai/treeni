@@ -79,6 +79,9 @@ input,select,textarea{font-family:inherit;font-size:17px;color:var(--txt)}
 .chip.ok{background:rgba(70,201,139,.12);color:var(--ok);border-color:rgba(70,201,139,.35)}
 .swap{display:flex;gap:14px;margin:6px 0 0;flex-wrap:wrap}
 .linkbtn{background:none;border:none;padding:6px 0;color:var(--txt2);font-size:14px;text-decoration:underline;text-underline-offset:3px}
+.gymrow{display:flex;align-items:center;gap:10px;margin:8px 0 0}
+.gymrow label{flex:none;font-size:12px;font-weight:600;letter-spacing:.09em;text-transform:uppercase;color:var(--muted)}
+.gymrow select{flex:1;min-width:0;padding:9px 10px;font-size:16px}
 
 /* liikekortit */
 .ex{background:var(--bg2);border:1px solid var(--line);border-radius:var(--r);margin-top:12px;overflow:hidden}
@@ -211,7 +214,7 @@ td:last-child,th:last-child{padding-right:0}
   </div>
   <div class="strip" id="strip"></div>
   <div class="sync" id="sync" hidden></div>
-  <div class="ver" id="ver">w3 · käynnistyy…</div>
+  <div class="ver" id="ver">w4 · käynnistyy…</div>
 </div></div>
 
 <main class="wrap">
@@ -233,7 +236,7 @@ td:last-child,th:last-child{padding-right:0}
 <script>
 /* vianetsintä: näytetään kaatuminen ruudulla, koska puhelimen konsolia ei näe */
 (function(){
-  function show(m){ var v=document.getElementById('ver'); if(v) v.textContent='w3 · VIRHE: '+m; }
+  function show(m){ var v=document.getElementById('ver'); if(v) v.textContent='w4 · VIRHE: '+m; }
   window.addEventListener('error',function(e){ show((e.message||'?')+' @'+(e.lineno||'?')+':'+(e.colno||'?')); });
   window.addEventListener('unhandledrejection',function(e){ var r=e.reason; show('lupaus: '+((r&&(r.code||r.message))||r)); });
 })();
@@ -254,6 +257,14 @@ var DEFAULTS={
   P:[['ylatalja','Ylätalja'],['kapea-soutu','Kapea soutu'],['reverse-peck-deck','Reverse peck deck'],
      ['preacher-curl','Preacher curl'],['takareisi','Takareisi'],['pohkeet','Pohkeet']]
 };
+/* salit: ennen salivalintaa tallennetut treenit ovat eri saleilta, joten ne jäävät ilman salia (NO_GYM),
+   kunnes ne merkitään käsin treenipäivän salivalikosta */
+var NO_GYM='';
+function defGyms(){ return [{id:'oma-sali',name:'Oma sali'}]; }
+function fixGyms(o,fb){
+  o.gyms=(o.gyms&&o.gyms.length)?o.gyms:(fb||defGyms());
+  if(!o.gyms.some(function(g){ return g.id===o.gym; })) o.gym=o.gyms[0].id;
+}
 
 /* ---------- päivämäärät ---------- */
 function pad(n){return n<10?'0'+n:''+n;}
@@ -277,7 +288,8 @@ function clock(ts){var d=new Date(ts);return pad(d.getHours())+'.'+pad(d.getMinu
 /* ---------- tila ---------- */
 function blank(){
   var s={v:1,ex:{},prog:{A:[],P:[]},sessions:{},overrides:{},theme:'dark',
-    names:{A:DEF_NAMES.A,P:DEF_NAMES.P,R:DEF_NAMES.R},pattern:DEF_PATTERN.slice(),altWeeks:true};
+    names:{A:DEF_NAMES.A,P:DEF_NAMES.P,R:DEF_NAMES.R},pattern:DEF_PATTERN.slice(),altWeeks:true,
+    gyms:defGyms(),gym:'oma-sali'};
   ['A','P'].forEach(function(k){
     DEFAULTS[k].forEach(function(e){ s.ex[e[0]]={id:e[0],name:e[1]}; s.prog[k].push({id:e[0],sets:2}); });
   });
@@ -310,6 +322,7 @@ var S=(function(){
         o.names={A:(o.names&&o.names.A)||DEF_NAMES.A,P:(o.names&&o.names.P)||DEF_NAMES.P,R:(o.names&&o.names.R)||DEF_NAMES.R};
         o.pattern=(o.pattern&&o.pattern.length===7)?o.pattern:DEF_PATTERN.slice();
         o.altWeeks=(o.altWeeks===undefined)?true:!!o.altWeeks;
+        fixGyms(o);
         return o;
       }
     }
@@ -325,13 +338,20 @@ function skey(iso,t){return iso+'|'+t;}
 function sess(iso,t){return S.sessions[skey(iso,t)]||null;}
 function ensure(iso,t){
   var k=skey(iso,t), s=S.sessions[k];
-  if(!s){ s={date:iso,type:t,ts:0,saved:false,entries:{},counts:{}}; S.sessions[k]=s; }
+  if(!s){ s={date:iso,type:t,ts:0,saved:false,entries:{},counts:{},gym:S.gym}; S.sessions[k]=s; }
   s.counts=s.counts||{}; s.swaps=s.swaps||{};
   return s;
 }
 /* päiväkohtainen liikevaihto: ohjelman paikka (slot) -> tänään tehtävä liike */
 function eidOf(s,slot){ var e=s&&s.swaps&&s.swaps[slot]; return (e&&S.ex[e])?e:slot; }
 function typeFor(iso){ return S.overrides[iso]||planFor(iso); }
+/* treenin sali: tallennettu ilman salia = vanha merkitsemätön historia, tallentamaton = oletussali */
+function sessGym(s){ return (s&&s.gym)||(s&&s.saved?NO_GYM:S.gym); }
+function gymById(id){ return S.gyms.filter(function(g){ return g.id===id; })[0]||null; }
+function gymName(id){
+  if(id===NO_GYM) return 'Ei salia';
+  var g=gymById(id); return g?(g.name.trim()||'Nimetön sali'):'Poistettu sali';
+}
 /* puolittain tehty sarja: reps = vasen, reps2 = oikea (tyhjä = sama kuin vasen); tilastoissa puolten keskiarvo */
 function r2(r){ return (r&&r.reps2!=null)?r.reps2:''; }
 function eff(r){ var a=num(r.reps), b=num(r2(r)); return !isFinite(b)?a:!isFinite(a)?b:(a+b)/2; }
@@ -358,16 +378,22 @@ function savedSessions(){
   out.sort(function(a,b){ return a.date<b.date?-1:a.date>b.date?1:(a.ts-b.ts); });
   return out;
 }
-function lastPerf(id,iso,exKey){
-  var best=null;
+/* edellinen kerta samalla salilla; jos sillä ei ole vielä historiaa, uusin miltä tahansa salilta (other=true) */
+function lastPerf(id,iso,exKey,gym){
+  var best=null, any=null;
+  function newer(c,b){ return !b||c.date>b.date||(c.date===b.date&&c.ts>b.ts); }
   for(var k in S.sessions){
     var s=S.sessions[k];
     if(!s.saved||k===exKey||s.date>iso) continue;
     var rows=(s.entries[id]||[]).filter(filled);
     if(!rows.length) continue;
-    if(!best||s.date>best.date||(s.date===best.date&&s.ts>best.ts)) best={date:s.date,ts:s.ts,rows:rows};
+    var c={date:s.date,ts:s.ts,rows:rows,gym:sessGym(s)};
+    if(newer(c,any)) any=c;
+    if(c.gym===gym&&newer(c,best)) best=c;
   }
-  return best;
+  if(best) return best;
+  if(any) any.other=true;
+  return any;
 }
 function esc(t){ return String(t).replace(/[&<>"]/g,function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
 function slug(name){
@@ -462,25 +488,29 @@ function renderDay(){
       (over?'<div class="swap"><button class="linkbtn" data-force="auto">Palauta ohjelman mukainen päivä</button></div>':'');
     return;
   }
-  var s=sess(cur,t), key=skey(cur,t), list=S.prog[t], other=(t==='A'?'P':'A'), h='';
+  var s=sess(cur,t), key=skey(cur,t), list=S.prog[t], other=(t==='A'?'P':'A'), g=sessGym(s), h='';
   h+='<div class="banner"><h2>'+esc(S.names[t])+'</h2>'+
      (s&&s.saved?'<span class="chip ok">Tallennettu '+clock(s.ts)+'</span>':'<span class="chip">'+list.length+' liikettä</span>')+'</div>';
   h+='<div class="swap"><button class="linkbtn" data-force="'+other+'">Vaihda '+esc(S.names[other].toLowerCase())+'iin</button>'+
      '<button class="linkbtn" data-force="R">Merkitse lepopäiväksi</button>'+
      (over?'<button class="linkbtn" data-force="auto">Palauta ohjelma</button>':'')+'</div>';
+  h+='<div class="gymrow"><label for="gymSel">Sali</label><select id="gymSel">'+
+     (gymById(g)?'':'<option value="'+esc(g)+'" selected>'+esc(gymName(g))+'</option>')+
+     S.gyms.map(function(x){ return '<option value="'+esc(x.id)+'"'+(x.id===g?' selected':'')+'>'+esc(gymName(x.id))+'</option>'; }).join('')+
+     '</select></div>';
   if(!list.length) h+='<p class="empty">Tässä splitissä ei ole liikkeitä. Lisää ne Asetukset-välilehdellä.</p>';
 
   list.forEach(function(p){
     var eid=eidOf(s,p.id), ex=S.ex[eid]; if(!ex) return;
     var swapped=(eid!==p.id), orig=S.ex[p.id];
-    var rows=rowsOf(s,eid), n=setCount(s,eid,p.sets), lp=lastPerf(eid,cur,key);
+    var rows=rowsOf(s,eid), n=setCount(s,eid,p.sets), lp=lastPerf(eid,cur,key,g);
     var uni=!!ex.uni||rows.some(function(x){ return r2(x)!==''; });
     h+='<article class="ex"><div class="ex-hd"><h3>'+esc(ex.name)+
        (swapped?'<span class="orig">Vaihdettu tälle päivälle · ohjelmassa '+esc(orig?orig.name:'?')+'</span>':'')+'</h3>'+
-       '<span class="last">'+(lp?'viimeksi '+dm(lp.date):'ei historiaa')+'</span></div><div class="sets">';
+       '<span class="last">'+(lp?'viimeksi '+dm(lp.date)+(lp.other?' ('+esc(gymName(lp.gym))+')':''):'ei historiaa')+'</span></div><div class="sets">';
     for(var i=0;i<n;i++){
       var r=rows[i]||{kg:'',reps:''}, iid='i-'+t+'-'+eid+'-'+i;
-      h+='<div class="set" data-ex="'+eid+'" data-i="'+i+'">'+
+      h+='<div class="set" data-ex="'+eid+'" data-i="'+i+'"'+(lp&&lp.other?' data-other="1"':'')+'>'+
         '<div class="set-top"><span class="setno">Sarja '+(i+1)+'</span>'+prevText(lp,i)+'<span class="trend"></span></div>'+
         '<div class="set-in'+(uni?' uni':'')+'">'+
           '<div class="grp"><button class="stp" type="button" data-adj="kg" data-d="-1" aria-label="Vähennä painoa">−</button>'+
@@ -512,6 +542,8 @@ function renderDay(){
 }
 function markSet(setEl){
   var tr=setEl.querySelector('.trend'); tr.className='trend'; tr.textContent='';
+  /* toisen salin tulos on vain suuntaa antava: ei nousu/lasku-nuolta */
+  if(setEl.dataset.other) return;
   var i2=setEl.querySelector('[data-f="reps2"]');
   var kg=num(setEl.querySelector('[data-f="kg"]').value), rp=eff({reps:setEl.querySelector('[data-f="reps"]').value.trim(),reps2:i2?i2.value.trim():''});
   var pv=setEl.querySelector('.prev b'); if(!pv||!isFinite(kg)||!isFinite(rp)) return;
@@ -539,6 +571,12 @@ V.treeni.addEventListener('input',function(e){
   if(inp.dataset.f==='reps'){ var o2=set.querySelector('[data-f="reps2"]'); if(o2) o2.placeholder=inp.value.trim()||'0'; }
   persistSess(); markSet(set); updateSave();
 });
+V.treeni.addEventListener('change',function(e){
+  if(e.target.id!=='gymSel') return;
+  var s=ensure(cur,typeFor(cur));
+  s.gym=e.target.value;
+  persistSess(); renderDay(); toast('Sali: '+gymName(s.gym));
+});
 V.treeni.addEventListener('click',function(e){
   var b=e.target.closest('button'); if(!b) return;
   var t=typeFor(cur);
@@ -564,7 +602,7 @@ V.treeni.addEventListener('click',function(e){
   }
   if(b.id==='saveBtn'){
     var sv=sess(cur,t); if(!hasData(sv)) return;
-    sv.saved=true; sv.ts=Date.now(); sv.date=cur; sv.type=t;
+    sv.gym=sessGym(sv); sv.saved=true; sv.ts=Date.now(); sv.date=cur; sv.type=t;
     persistSess(); renderStrip(); renderDay(); toast('Treeni tallennettu'); return;
   }
   var act=b.dataset.act; if(!act) return;
@@ -574,7 +612,7 @@ V.treeni.addEventListener('click',function(e){
   if(act==='unswap'){ applySwap(t,slot,slot,'day'); toast('Alkuperäinen liike palautettu'); return; }
   var s2=ensure(cur,t), id=eidOf(s2,slot), n=setCount(s2,id,prog.sets);
   if(act==='copy'){
-    var lp=lastPerf(id,cur,skey(cur,t)); if(!lp) return;
+    var lp=lastPerf(id,cur,skey(cur,t),sessGym(s2)); if(!lp) return;
     s2.entries[id]=lp.rows.map(function(r){ var o={kg:r.kg,reps:r.reps}; if(r2(r)!=='') o.reps2=r.reps2; return o; });
     s2.counts[id]=Math.max(n,lp.rows.length);
     persistSess(); renderDay(); toast('Edelliset arvot kopioitu');
@@ -664,7 +702,7 @@ function swapDialog(t,slot){
 }
 
 /* ---------- historia ---------- */
-var hSel=null, hMetric='top', chart=null;
+var hSel=null, hMetric='top', hGym=null, chart=null;
 function exerciseOptions(){
   var used={}, opts=[];
   ['A','P'].forEach(function(k){
@@ -676,11 +714,12 @@ function exerciseOptions(){
   if(rest.length) opts.push(['Ohjelman ulkopuolelta',rest]);
   return opts;
 }
-function seriesFor(id){
-  return savedSessions().filter(function(s){ return (s.entries[id]||[]).filter(filled).length; })
+/* gym = salin id tai 'all' */
+function seriesFor(id,gym){
+  return savedSessions().filter(function(s){ return (gym==='all'||sessGym(s)===gym)&&(s.entries[id]||[]).filter(filled).length; })
     .map(function(s){
       var rows=s.entries[id].filter(filled);
-      return {date:s.date,type:s.type,rows:rows,top:topOf(rows),vol:volOf(rows),reps:repsOf(rows)};
+      return {date:s.date,type:s.type,gym:sessGym(s),rows:rows,top:topOf(rows),vol:volOf(rows),reps:repsOf(rows)};
     });
 }
 function renderHistory(){
@@ -688,8 +727,20 @@ function renderHistory(){
   if(!opts.length){ V.historia.innerHTML='<div class="sec"><h2>Historia</h2><p class="empty">Ei liikkeitä.</p></div>'; return; }
   var flat=[]; opts.forEach(function(g){ flat=flat.concat(g[1]); });
   if(!hSel||flat.indexOf(hSel)<0) hSel=flat[0];
+  var unmarked=savedSessions().some(function(s){ return sessGym(s)===NO_GYM; });
+  var multi=S.gyms.length>1||unmarked;
+  if(!multi) hGym='all';
+  else if(hGym===null||(hGym!=='all'&&!gymById(hGym)&&!(hGym===NO_GYM&&unmarked))) hGym=S.gym;
 
-  var h='<div class="sec"><label class="field" for="hSel"><span>Liike</span><select id="hSel">';
+  var h='<div class="sec">';
+  if(multi){
+    h+='<label class="field" for="hGym"><span>Sali</span><select id="hGym">'+
+       '<option value="all"'+(hGym==='all'?' selected':'')+'>Kaikki salit</option>'+
+       S.gyms.map(function(x){ return '<option value="'+esc(x.id)+'"'+(x.id===hGym?' selected':'')+'>'+esc(gymName(x.id))+'</option>'; }).join('')+
+       (unmarked?'<option value="'+NO_GYM+'"'+(hGym===NO_GYM?' selected':'')+'>Ei salia (vanhat)</option>':'')+
+       '</select></label>';
+  }
+  h+='<label class="field" for="hSel"><span>Liike</span><select id="hSel">';
   opts.forEach(function(g){
     h+='<optgroup label="'+esc(g[0])+'">';
     g[1].forEach(function(id){ h+='<option value="'+id+'"'+(id===hSel?' selected':'')+'>'+esc(S.ex[id].name)+'</option>'; });
@@ -702,9 +753,10 @@ function renderHistory(){
       '<button data-m="reps" aria-pressed="'+(hMetric==='reps')+'">Toistot</button>'+
     '</div>';
 
-  var d=seriesFor(hSel);
+  var d=seriesFor(hSel,hGym);
   if(!d.length){
-    h+='<div class="card"><p class="empty">Liikkeelle '+esc(S.ex[hSel].name)+' ei ole vielä tallennettuja suorituksia. Kirjaa treeni ja paina Tallenna, niin kehitys ilmestyy tähän.</p></div>';
+    h+='<div class="card"><p class="empty">Liikkeelle '+esc(S.ex[hSel].name)+' ei ole vielä tallennettuja suorituksia'+
+       (hGym!=='all'?' salilla '+esc(gymName(hGym)):'')+'. Kirjaa treeni ja paina Tallenna, niin kehitys ilmestyy tähän.</p></div>';
   }else{
     var last=d[d.length-1];
     var tops=d.map(function(x){ return isFinite(x.top)?x.top:0; });
@@ -720,7 +772,8 @@ function renderHistory(){
     for(var i=d.length-1;i>=0;i--){
       var r=d[i], prev=(i>0?d[i-1]:null);
       var arrow=prev?(r.vol>prev.vol?' <span class="trend up">▲</span>':r.vol<prev.vol?' <span class="trend dn">▼</span>':''):'';
-      h+='<tr><td>'+dm(r.date)+' <span class="tag '+r.type+'">'+r.type+'</span></td>'+
+      h+='<tr><td>'+dm(r.date)+' <span class="tag '+r.type+'">'+r.type+'</span>'+
+         (multi&&hGym==='all'?'<br><small style="color:var(--muted)">'+esc(gymName(r.gym))+'</small>':'')+'</td>'+
          '<td>'+r.rows.map(function(x){ return (x.kg===''?'–':fmtN(num(x.kg)))+' × '+esc(repsTxt(x)); }).join(' &nbsp; ')+'</td>'+
          '<td>'+(isFinite(r.top)?fmtN(r.top)+' kg':'–')+'</td>'+
          '<td>'+fmtN(r.vol)+arrow+'</td></tr>';
@@ -736,7 +789,7 @@ function renderHistory(){
     var n=0,vol=0;
     for(var id in s.entries){ var rr=s.entries[id].filter(filled); if(rr.length){ n++; vol+=volOf(rr); } }
     h+='<div class="log"><span class="d">'+dm(s.date)+'</span><span class="tag '+s.type+'">'+esc(S.names[s.type])+'</span>'+
-       '<span class="m">'+n+' liikettä · '+fmtN(vol)+' kg</span>'+
+       '<span class="m">'+(multi?esc(gymName(sessGym(s)))+' · ':'')+n+' liikettä · '+fmtN(vol)+' kg</span>'+
        '<button class="icon" data-open="'+s.date+'" aria-label="Avaa treenipäivä">›</button>'+
        '<button class="icon dg" data-del="'+skey(s.date,s.type)+'" aria-label="Poista treeni">✕</button></div>';
   });
@@ -775,7 +828,10 @@ function drawChart(d){
            ticks:{color:muted,font:{size:11},padding:6}}}}
   });
 }
-V.historia.addEventListener('change',function(e){ if(e.target.id==='hSel'){ hSel=e.target.value; renderHistory(); } });
+V.historia.addEventListener('change',function(e){
+  if(e.target.id==='hSel'){ hSel=e.target.value; renderHistory(); }
+  else if(e.target.id==='hGym'){ hGym=e.target.value; renderHistory(); }
+});
 V.historia.addEventListener('click',function(e){
   var b=e.target.closest('button'); if(!b) return;
   if(b.dataset.m){ hMetric=b.dataset.m; renderHistory(); return; }
@@ -823,6 +879,18 @@ function renderSettings(){
      '<p class="hint">Kun vaihto on päällä, '+esc(S.names.A)+' ja '+esc(S.names.P)+' vuorottelevat viikko kerrallaan yllä valitussa kaavassa (ankkuri: viikko 21.9.2026). Pois päältä kytkettynä sama viikko-ohjelma toistuu joka viikko sellaisenaan. Tähti päivänumeron alla tarkoittaa käsin vaihdettua yksittäistä päivää.</p>'+
      '</div></div>';
 
+  h+='<div class="sec"><h2>Salit</h2><div class="card">';
+  S.gyms.forEach(function(x){
+    h+='<div class="prow"><input class="nm" data-gid="'+esc(x.id)+'" value="'+esc(x.name)+'" aria-label="Salin nimi">'+
+       (x.id===S.gym?'<span class="chip ok" style="margin-left:0">Oletus</span>'
+                    :'<button class="mini" data-gdef="'+esc(x.id)+'">Tee oletukseksi</button>')+
+       '<button class="icon dg" data-grm="'+esc(x.id)+'" aria-label="Poista sali">✕</button></div>';
+  });
+  h+='<div class="addrow"><input id="gymAdd" placeholder="Uusi sali" aria-label="Uuden salin nimi">'+
+     '<button id="gymAddBtn">Lisää</button></div>'+
+     '<p class="hint">Uusi treeni alkaa oletussalilla, ja treenipäivässä salin voi vaihtaa juuri sille treenille. Edellinen tulos ja historia näytetään salikohtaisesti. Jos liikettä ei ole vielä tehty valitulla salilla, näytetään uusin tulos toiselta salilta ilman nousu/lasku-nuolia. Ennen salivalintaa tallennetut treenit ovat tilassa "Ei salia": avaa treeni historiasta ja valitse sille sali. Salia, jolla on tallennettuja treenejä, ei voi poistaa.</p>'+
+     '</div></div>';
+
   h+='<div class="sec"><h2>Pilvitallennus</h2><div class="card">'+
      '<p class="hint" style="margin-top:0" id="syncNote">Yhdistetaan</p>'+
      '<div class="btnrow"><button id="syncBtn">Lähetä muutokset nyt</button></div>'+
@@ -845,6 +913,11 @@ function renderSettings(){
 }
 V.asetukset.addEventListener('input',function(e){
   var inp=e.target.closest('input.nm'); if(!inp) return;
+  if(inp.dataset.gid){
+    var gg=gymById(inp.dataset.gid);
+    if(gg){ gg.name=inp.value; persistCfg(); }
+    return;
+  }
   if(inp.dataset.namek){
     var nk=inp.dataset.namek, v=(inp.value||'').trim();
     S.names[nk]=v||DEF_NAMES[nk]; persistCfg(); setAccent(); return;
@@ -860,8 +933,31 @@ V.asetukset.addEventListener('change',function(e){
 });
 V.asetukset.addEventListener('click',function(e){
   var b=e.target.closest('button'); if(!b) return;
+  if(b.dataset.gdef){
+    S.gym=b.dataset.gdef; persistCfg(); renderSettings(); toast('Oletussali: '+gymName(S.gym)); return;
+  }
+  if(b.dataset.grm){
+    var gid=b.dataset.grm;
+    if(S.gyms.length<2){ toast('Vähintään yksi sali tarvitaan'); return; }
+    for(var sk in S.sessions){
+      var gs=S.sessions[sk];
+      if(gs.saved&&hasData(gs)&&sessGym(gs)===gid){ toast('Salilla on tallennettuja treenejä — ei voi poistaa'); return; }
+    }
+    ask('Poistetaanko sali "'+gymName(gid)+'"?','Poista',true,function(){
+      S.gyms=S.gyms.filter(function(x){ return x.id!==gid; });
+      fixGyms(S); persistCfg(); renderSettings(); toast('Sali poistettu');
+    });
+    return;
+  }
+  if(b.id==='gymAddBtn'){
+    var gf=document.getElementById('gymAdd'), gname=(gf.value||'').trim();
+    if(!gname){ gf.focus(); return; }
+    var gb=gname.toLowerCase().replace(/[äå]/g,'a').replace(/ö/g,'o').replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'')||'sali';
+    var nid2=gb, gn=2; while(gymById(nid2)){ nid2=gb+'-'+gn; gn++; }
+    S.gyms.push({id:nid2,name:gname}); persistCfg(); renderSettings(); toast(gname+' lisätty'); return;
+  }
   var row=b.closest('.prow');
-  if(row){
+  if(row&&row.dataset.k){
     var k=row.dataset.k, id=row.dataset.id, arr=S.prog[k];
     var i=arr.map(function(x){ return x.id; }).indexOf(id);
     if(i<0) return;
@@ -906,6 +1002,7 @@ V.asetukset.addEventListener('click',function(e){
       S.names={A:(S.names&&S.names.A)||DEF_NAMES.A,P:(S.names&&S.names.P)||DEF_NAMES.P,R:(S.names&&S.names.R)||DEF_NAMES.R};
       S.pattern=(S.pattern&&S.pattern.length===7)?S.pattern:DEF_PATTERN.slice();
       S.altWeeks=(S.altWeeks===undefined)?true:!!S.altWeeks;
+      fixGyms(S);
       persistAll(prev); applyTheme(); setAccent(); renderSettings(); toast('Varmuuskopio tuotu');
     });
     return;
@@ -921,7 +1018,7 @@ V.asetukset.addEventListener('click',function(e){
 });
 
 /* ---------- pilvitallennus (Supabase) ---------- */
-var PKEY='treeni.pending', SKEY='treeni.synced', VER='w3', WKEY='treeni.wrote';
+var PKEY='treeni.pending', SKEY='treeni.synced', VER='w4', WKEY='treeni.wrote';
 var SB_URL='https://ijzurdaldczkjlabcchc.supabase.co/rest/v1/rpc/', SB_KEY='sb_publishable_BXr_11KXalN0nVp65OTjxw_s6tt6bQF';
 var db=null, dbTried=false, everSynced=false, wrote=false, pending={}, flushT=null, flushing=false, lastOk=0, lastErr='';
 try{ pending=JSON.parse(localStorage.getItem(PKEY)||'{}')||{}; }catch(e){ pending={}; }
@@ -933,8 +1030,12 @@ function markSynced(){ everSynced=true; try{ localStorage.setItem(SKEY,'1'); }ca
 function keyToId(k){ return k.replace('|','-'); }
 function idToKey(id){ return id.slice(0,10)+'|'+id.slice(11); }
 function pendingCount(){ var n=0; for(var x in pending) n++; return n; }
-function sessionDoc(s){ return {date:s.date,type:s.type,ts:s.ts||0,saved:!!s.saved,entries:s.entries||{},counts:s.counts||{},swaps:s.swaps||{}}; }
-function configDoc(){ return {ex:S.ex,prog:S.prog,overrides:S.overrides||{},theme:S.theme||'dark',names:S.names,pattern:S.pattern,altWeeks:S.altWeeks,updatedAt:Date.now()}; }
+function sessionDoc(s){
+  var d={date:s.date,type:s.type,ts:s.ts||0,saved:!!s.saved,entries:s.entries||{},counts:s.counts||{},swaps:s.swaps||{}};
+  if(s.gym) d.gym=s.gym;
+  return d;
+}
+function configDoc(){ return {ex:S.ex,prog:S.prog,overrides:S.overrides||{},theme:S.theme||'dark',names:S.names,pattern:S.pattern,altWeeks:S.altWeeks,gyms:S.gyms,gym:S.gym,updatedAt:Date.now()}; }
 /* pending[id] on versiolaskuri: kirjoituksen valmistuessa merkki poistetaan vain jos sitä ei ole sillä välin muutettu */
 var seq=0; for(var pk in pending) seq=Math.max(seq,+pending[pk]||0);
 function bump(id){ pending[id]=++seq; }
@@ -996,6 +1097,9 @@ function applyConfig(b){
   S.names={A:(b.names&&b.names.A)||DEF_NAMES.A,P:(b.names&&b.names.P)||DEF_NAMES.P,R:(b.names&&b.names.R)||DEF_NAMES.R};
   S.pattern=(b.pattern&&b.pattern.length===7)?b.pattern:DEF_PATTERN.slice();
   S.altWeeks=(b.altWeeks===undefined)?true:!!b.altWeeks;
+  /* vanhan version kirjoittamassa configissa ei ole saleja: pidetään tämän laitteen salit */
+  var keep=S.gyms;
+  S.gyms=b.gyms; S.gym=b.gym||S.gym; fixGyms(S,keep);
   persist(); applyTheme(); setAccent();
   return true;
 }
@@ -1009,6 +1113,7 @@ function applySessions(qs){
     var b=thaw(d.data()||{});
     var nu={date:b.date||kk.slice(0,10),type:b.type||kk.slice(11),ts:b.ts||0,
       saved:!!b.saved,entries:b.entries||{},counts:b.counts||{},swaps:b.swaps||{}};
+    if(b.gym) nu.gym=b.gym;
     /* haku toistuu minuutin välein: piirretään uudelleen vain jos jokin oikeasti muuttui */
     if(JSON.stringify(S.sessions[kk])===JSON.stringify(nu)) return;
     S.sessions[kk]=nu;
