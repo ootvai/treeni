@@ -257,9 +257,10 @@ var DEFAULTS={
   P:[['ylatalja','Ylätalja'],['kapea-soutu','Kapea soutu'],['reverse-peck-deck','Reverse peck deck'],
      ['preacher-curl','Preacher curl'],['takareisi','Takareisi'],['pohkeet','Pohkeet']]
 };
-/* salit: ennen salivalintaa tallennetut treenit kuuluvat tälle salille */
-var LEGACY_GYM='forever-sveitsi';
-function defGyms(){ return [{id:LEGACY_GYM,name:'Forever Sveitsi'}]; }
+/* salit: ennen salivalintaa tallennetut treenit ovat eri saleilta, joten ne jäävät ilman salia (NO_GYM),
+   kunnes ne merkitään käsin treenipäivän salivalikosta */
+var NO_GYM='';
+function defGyms(){ return [{id:'oma-sali',name:'Oma sali'}]; }
 function fixGyms(o,fb){
   o.gyms=(o.gyms&&o.gyms.length)?o.gyms:(fb||defGyms());
   if(!o.gyms.some(function(g){ return g.id===o.gym; })) o.gym=o.gyms[0].id;
@@ -288,7 +289,7 @@ function clock(ts){var d=new Date(ts);return pad(d.getHours())+'.'+pad(d.getMinu
 function blank(){
   var s={v:1,ex:{},prog:{A:[],P:[]},sessions:{},overrides:{},theme:'dark',
     names:{A:DEF_NAMES.A,P:DEF_NAMES.P,R:DEF_NAMES.R},pattern:DEF_PATTERN.slice(),altWeeks:true,
-    gyms:defGyms(),gym:LEGACY_GYM};
+    gyms:defGyms(),gym:'oma-sali'};
   ['A','P'].forEach(function(k){
     DEFAULTS[k].forEach(function(e){ s.ex[e[0]]={id:e[0],name:e[1]}; s.prog[k].push({id:e[0],sets:2}); });
   });
@@ -344,10 +345,13 @@ function ensure(iso,t){
 /* päiväkohtainen liikevaihto: ohjelman paikka (slot) -> tänään tehtävä liike */
 function eidOf(s,slot){ var e=s&&s.swaps&&s.swaps[slot]; return (e&&S.ex[e])?e:slot; }
 function typeFor(iso){ return S.overrides[iso]||planFor(iso); }
-/* treenin sali: tallennettu ilman salia = vanha historia, tallentamaton = oletussali */
-function sessGym(s){ return (s&&s.gym)||(s&&s.saved?LEGACY_GYM:S.gym); }
+/* treenin sali: tallennettu ilman salia = vanha merkitsemätön historia, tallentamaton = oletussali */
+function sessGym(s){ return (s&&s.gym)||(s&&s.saved?NO_GYM:S.gym); }
 function gymById(id){ return S.gyms.filter(function(g){ return g.id===id; })[0]||null; }
-function gymName(id){ var g=gymById(id); return g?(g.name.trim()||'Nimetön sali'):'Poistettu sali'; }
+function gymName(id){
+  if(id===NO_GYM) return 'Ei salia';
+  var g=gymById(id); return g?(g.name.trim()||'Nimetön sali'):'Poistettu sali';
+}
 /* puolittain tehty sarja: reps = vasen, reps2 = oikea (tyhjä = sama kuin vasen); tilastoissa puolten keskiarvo */
 function r2(r){ return (r&&r.reps2!=null)?r.reps2:''; }
 function eff(r){ var a=num(r.reps), b=num(r2(r)); return !isFinite(b)?a:!isFinite(a)?b:(a+b)/2; }
@@ -723,15 +727,17 @@ function renderHistory(){
   if(!opts.length){ V.historia.innerHTML='<div class="sec"><h2>Historia</h2><p class="empty">Ei liikkeitä.</p></div>'; return; }
   var flat=[]; opts.forEach(function(g){ flat=flat.concat(g[1]); });
   if(!hSel||flat.indexOf(hSel)<0) hSel=flat[0];
-  var multi=S.gyms.length>1;
+  var unmarked=savedSessions().some(function(s){ return sessGym(s)===NO_GYM; });
+  var multi=S.gyms.length>1||unmarked;
   if(!multi) hGym='all';
-  else if(hGym===null||(hGym!=='all'&&!gymById(hGym))) hGym=S.gym;
+  else if(hGym===null||(hGym!=='all'&&!gymById(hGym)&&!(hGym===NO_GYM&&unmarked))) hGym=S.gym;
 
   var h='<div class="sec">';
   if(multi){
     h+='<label class="field" for="hGym"><span>Sali</span><select id="hGym">'+
        '<option value="all"'+(hGym==='all'?' selected':'')+'>Kaikki salit</option>'+
        S.gyms.map(function(x){ return '<option value="'+esc(x.id)+'"'+(x.id===hGym?' selected':'')+'>'+esc(gymName(x.id))+'</option>'; }).join('')+
+       (unmarked?'<option value="'+NO_GYM+'"'+(hGym===NO_GYM?' selected':'')+'>Ei salia (vanhat)</option>':'')+
        '</select></label>';
   }
   h+='<label class="field" for="hSel"><span>Liike</span><select id="hSel">';
@@ -882,7 +888,7 @@ function renderSettings(){
   });
   h+='<div class="addrow"><input id="gymAdd" placeholder="Uusi sali" aria-label="Uuden salin nimi">'+
      '<button id="gymAddBtn">Lisää</button></div>'+
-     '<p class="hint">Uusi treeni alkaa oletussalilla, ja treenipäivässä salin voi vaihtaa juuri sille treenille. Edellinen tulos ja historia näytetään salikohtaisesti. Jos liikettä ei ole vielä tehty valitulla salilla, näytetään uusin tulos toiselta salilta ilman nousu/lasku-nuolia. Salia, jolla on tallennettuja treenejä, ei voi poistaa.</p>'+
+     '<p class="hint">Uusi treeni alkaa oletussalilla, ja treenipäivässä salin voi vaihtaa juuri sille treenille. Edellinen tulos ja historia näytetään salikohtaisesti. Jos liikettä ei ole vielä tehty valitulla salilla, näytetään uusin tulos toiselta salilta ilman nousu/lasku-nuolia. Ennen salivalintaa tallennetut treenit ovat tilassa "Ei salia": avaa treeni historiasta ja valitse sille sali. Salia, jolla on tallennettuja treenejä, ei voi poistaa.</p>'+
      '</div></div>';
 
   h+='<div class="sec"><h2>Pilvitallennus</h2><div class="card">'+
