@@ -143,6 +143,13 @@ textarea{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12.5p
 .seg{display:flex;gap:6px;margin:2px 0 12px}
 .seg button{flex:1;border:1px solid var(--line);background:var(--bg2);border-radius:10px;padding:10px 4px;font-size:14px;font-weight:600;color:var(--txt2)}
 .seg button[aria-pressed="true"]{background:var(--acc-soft);border-color:var(--acc);color:var(--acc)}
+.wklist{overflow-y:auto;-webkit-overflow-scrolling:touch;min-height:0;flex:1 1 auto;margin:0 0 6px}
+.wkrow{display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid var(--line)}
+.wkrow:last-child{border-bottom:none}
+.wkrow .wkd{width:58px;flex:none;font-weight:600;text-transform:capitalize}
+.wkrow .seg{flex:1;min-width:0;margin:0}
+.wkrow .seg button{min-width:0;padding:9px 2px;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.wkrow .lock{flex:1;font-size:13.5px;color:var(--muted)}
 .card{background:var(--bg2);border:1px solid var(--line);border-radius:var(--r);padding:12px}
 .chartbox{position:relative;height:230px;margin:2px 0 4px}
 .stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:12px 0 2px}
@@ -214,7 +221,7 @@ td:last-child,th:last-child{padding-right:0}
   </div>
   <div class="strip" id="strip"></div>
   <div class="sync" id="sync" hidden></div>
-  <div class="ver" id="ver">w4 · käynnistyy…</div>
+  <div class="ver" id="ver">w5 · käynnistyy…</div>
 </div></div>
 
 <main class="wrap">
@@ -236,7 +243,7 @@ td:last-child,th:last-child{padding-right:0}
 <script>
 /* vianetsintä: näytetään kaatuminen ruudulla, koska puhelimen konsolia ei näe */
 (function(){
-  function show(m){ var v=document.getElementById('ver'); if(v) v.textContent='w4 · VIRHE: '+m; }
+  function show(m){ var v=document.getElementById('ver'); if(v) v.textContent='w5 · VIRHE: '+m; }
   window.addEventListener('error',function(e){ show((e.message||'?')+' @'+(e.lineno||'?')+':'+(e.colno||'?')); });
   window.addEventListener('unhandledrejection',function(e){ var r=e.reason; show('lupaus: '+((r&&(r.code||r.message))||r)); });
 })();
@@ -275,10 +282,12 @@ function wdIdx(iso){return (new Date(tUTC(iso)).getUTCDay()+6)%7;}
 function addDays(iso,n){return isoUTC(tUTC(iso)+n*DAY);}
 function mondayOf(iso){return addDays(iso,-wdIdx(iso));}
 function weekSwapped(iso){var w=Math.round((tUTC(mondayOf(iso))-ANCHOR)/(7*DAY));return ((w%2)+2)%2===1;}
+/* flips = maanantait, joista alkaen A ja P vaihtavat paikkaa pysyvästi (pariton määrä = käännetty) */
+function flipped(iso){ var m=mondayOf(iso); return (S.flips||[]).filter(function(f){ return f<=m; }).length%2===1; }
 function planFor(iso){
   var t=(S.pattern||DEF_PATTERN)[wdIdx(iso)];
-  if(!S.altWeeks) return t;
-  return weekSwapped(iso)?(t==='A'?'P':t==='P'?'A':'R'):t;
+  var sw=(S.altWeeks&&weekSwapped(iso))!==flipped(iso);
+  return sw?(t==='A'?'P':t==='P'?'A':'R'):t;
 }
 function dm(iso){var p=iso.split('-');return (+p[2])+'.'+(+p[1])+'.';}
 function dmy(iso){var p=iso.split('-');return (+p[2])+'.'+(+p[1])+'.'+p[0];}
@@ -288,7 +297,7 @@ function clock(ts){var d=new Date(ts);return pad(d.getHours())+'.'+pad(d.getMinu
 /* ---------- tila ---------- */
 function blank(){
   var s={v:1,ex:{},prog:{A:[],P:[]},sessions:{},overrides:{},theme:'dark',
-    names:{A:DEF_NAMES.A,P:DEF_NAMES.P,R:DEF_NAMES.R},pattern:DEF_PATTERN.slice(),altWeeks:true,
+    names:{A:DEF_NAMES.A,P:DEF_NAMES.P,R:DEF_NAMES.R},pattern:DEF_PATTERN.slice(),altWeeks:true,flips:[],
     gyms:defGyms(),gym:'oma-sali'};
   ['A','P'].forEach(function(k){
     DEFAULTS[k].forEach(function(e){ s.ex[e[0]]={id:e[0],name:e[1]}; s.prog[k].push({id:e[0],sets:2}); });
@@ -322,6 +331,7 @@ var S=(function(){
         o.names={A:(o.names&&o.names.A)||DEF_NAMES.A,P:(o.names&&o.names.P)||DEF_NAMES.P,R:(o.names&&o.names.R)||DEF_NAMES.R};
         o.pattern=(o.pattern&&o.pattern.length===7)?o.pattern:DEF_PATTERN.slice();
         o.altWeeks=(o.altWeeks===undefined)?true:!!o.altWeeks;
+        o.flips=Array.isArray(o.flips)?o.flips:[];
         fixGyms(o);
         return o;
       }
@@ -485,7 +495,8 @@ function renderDay(){
   if(t==='R'){
     el.innerHTML='<div class="rest"><h2>Lepopäivä</h2><p>Ohjelman mukaan '+longDate(cur)+' on vapaa.</p>'+
       '<div class="pair"><button class="a" data-force="A">Treenaa '+esc(S.names.A.toLowerCase())+'</button><button class="p" data-force="P">Treenaa '+esc(S.names.P.toLowerCase())+'</button></div></div>'+
-      (over?'<div class="swap"><button class="linkbtn" data-force="auto">Palauta ohjelman mukainen päivä</button></div>':'');
+      '<div class="swap"><button class="linkbtn" data-week="1">Muokkaa viikkoa</button>'+
+      (over?'<button class="linkbtn" data-force="auto">Palauta ohjelman mukainen päivä</button>':'')+'</div>';
     return;
   }
   var s=sess(cur,t), key=skey(cur,t), list=S.prog[t], other=(t==='A'?'P':'A'), g=sessGym(s), h='';
@@ -493,6 +504,7 @@ function renderDay(){
      (s&&s.saved?'<span class="chip ok">Tallennettu '+clock(s.ts)+'</span>':'<span class="chip">'+list.length+' liikettä</span>')+'</div>';
   h+='<div class="swap"><button class="linkbtn" data-force="'+other+'">Vaihda '+esc(S.names[other].toLowerCase())+'iin</button>'+
      '<button class="linkbtn" data-force="R">Merkitse lepopäiväksi</button>'+
+     '<button class="linkbtn" data-week="1">Muokkaa viikkoa</button>'+
      (over?'<button class="linkbtn" data-force="auto">Palauta ohjelma</button>':'')+'</div>';
   h+='<div class="gymrow"><label for="gymSel">Sali</label><select id="gymSel">'+
      (gymById(g)?'':'<option value="'+esc(g)+'" selected>'+esc(gymName(g))+'</option>')+
@@ -581,6 +593,7 @@ V.treeni.addEventListener('click',function(e){
   var b=e.target.closest('button'); if(!b) return;
   var t=typeFor(cur);
 
+  if(b.dataset.week){ weekDialog(); return; }
   if(b.dataset.force){
     var f=b.dataset.force;
     if(f==='auto') delete S.overrides[cur]; else S.overrides[cur]=f;
@@ -631,6 +644,60 @@ V.treeni.addEventListener('click',function(e){
     persistCfg(); persistSess(); renderDay();
   }
 });
+
+/* ---------- viikon muokkaus ---------- */
+/* Päivät, joille on kirjattu painoja tai toistoja, lukitaan: niiden treenityyppi ei muutu,
+   joten syötetyt sarjat pysyvät näkyvissä myös vuorottelun kääntämisen jälkeen. */
+function dayLocked(iso){ return hasData(sess(iso,'A'))||hasData(sess(iso,'P')); }
+function weekDialog(){
+  var mon=mondayOf(cur);
+  function pinLocked(){
+    for(var k in S.sessions){
+      var d=k.slice(0,10);
+      if(d>=mon&&!S.overrides[d]&&dayLocked(d)) S.overrides[d]=typeFor(d);
+    }
+  }
+  function refresh(){ persistCfg(); draw(); setAccent(); renderStrip(); renderDay(); }
+  function draw(){
+    var fl=(S.flips||[]).indexOf(mon)>=0, h='<div class="box wide"><h3>Viikko '+dm(mon)+'–'+dm(addDays(mon,6))+'</h3><div class="wklist">';
+    for(var i=0;i<7;i++){
+      var iso=addDays(mon,i), t=typeFor(iso), over=(S.overrides[iso]&&S.overrides[iso]!==planFor(iso));
+      h+='<div class="wkrow"><span class="wkd">'+WD[i]+' '+dm(iso)+(over?'*':'')+'</span>';
+      if(dayLocked(iso)) h+='<span class="lock">'+esc(S.names[t])+' · kirjattu, ei muuteta</span>';
+      else h+='<div class="seg">'+['A','P','R'].map(function(o){
+        return '<button data-wd="'+iso+'" data-t="'+o+'" aria-pressed="'+(t===o)+'">'+esc(S.names[o])+'</button>';
+      }).join('')+'</div>';
+      h+='</div>';
+    }
+    h+='</div><div class="btnrow"><button data-flip="1">'+(fl?'Peru kääntö tältä viikolta':'Käännä '+esc(S.names.A)+' ↔ '+esc(S.names.P)+' tästä eteenpäin')+'</button>'+
+       '<button data-reset="1">Palauta viikko ohjelmaan</button></div>'+
+       '<p class="hint">Kääntö vaihtaa '+esc(S.names.A)+' ja '+esc(S.names.P)+' -päivät keskenään tästä viikosta lähtien kaikille tuleville viikoille. Yksittäisen päivän voi valita yllä. Päivät, joille on jo kirjattu painoja tai toistoja, pysyvät ennallaan.</p>'+
+       '<div class="pair"><button data-x="0">Valmis</button></div></div>';
+    modal.innerHTML=h;
+  }
+  draw(); modal.hidden=false;
+  modal.onclick=function(e){
+    if(e.target===modal){ modal.hidden=true; return; }
+    var b=e.target.closest('button'); if(!b) return;
+    if(b.dataset.x){ modal.hidden=true; return; }
+    if(b.dataset.wd){
+      var iso=b.dataset.wd; if(dayLocked(iso)) return;
+      if(b.dataset.t===planFor(iso)) delete S.overrides[iso]; else S.overrides[iso]=b.dataset.t;
+      refresh(); return;
+    }
+    if(b.dataset.flip){
+      pinLocked();
+      var fs=(S.flips||[]).slice(), at=fs.indexOf(mon);
+      if(at>=0) fs.splice(at,1); else fs.push(mon);
+      fs.sort(); S.flips=fs;
+      refresh(); toast(at>=0?'Kääntö peruttu':'Vuorottelu käännetty '+dm(mon)+' alkaen'); return;
+    }
+    if(b.dataset.reset){
+      for(var i=0;i<7;i++){ var d=addDays(mon,i); if(!dayLocked(d)) delete S.overrides[d]; }
+      refresh(); toast('Viikko palautettu ohjelmaan');
+    }
+  };
+}
 
 /* ---------- liikkeen vaihto päivänäkymästä ---------- */
 /* scope 'day' = vain tämä treenipäivä, 'prog' = korvaa liikkeen pysyvästi ohjelmassa.
@@ -876,7 +943,7 @@ function renderSettings(){
   });
   h+='<div class="prow" style="border-bottom:none"><span style="flex:1;font-weight:600">Vaihda split viikoittain</span>'+
      '<input type="checkbox" id="altWeeksChk" '+(S.altWeeks?'checked':'')+' style="width:22px;height:22px"></div>'+
-     '<p class="hint">Kun vaihto on päällä, '+esc(S.names.A)+' ja '+esc(S.names.P)+' vuorottelevat viikko kerrallaan yllä valitussa kaavassa (ankkuri: viikko 21.9.2026). Pois päältä kytkettynä sama viikko-ohjelma toistuu joka viikko sellaisenaan. Tähti päivänumeron alla tarkoittaa käsin vaihdettua yksittäistä päivää.</p>'+
+     '<p class="hint">Kun vaihto on päällä, '+esc(S.names.A)+' ja '+esc(S.names.P)+' vuorottelevat viikko kerrallaan yllä valitussa kaavassa (ankkuri: viikko 21.9.2026). Pois päältä kytkettynä sama viikko-ohjelma toistuu joka viikko sellaisenaan. Tähti päivänumeron alla tarkoittaa käsin vaihdettua yksittäistä päivää. Koko viikon voi muokata ja vuorottelun kääntää treenipäivän Muokkaa viikkoa -napista.</p>'+
      '</div></div>';
 
   h+='<div class="sec"><h2>Salit</h2><div class="card">';
@@ -1002,6 +1069,7 @@ V.asetukset.addEventListener('click',function(e){
       S.names={A:(S.names&&S.names.A)||DEF_NAMES.A,P:(S.names&&S.names.P)||DEF_NAMES.P,R:(S.names&&S.names.R)||DEF_NAMES.R};
       S.pattern=(S.pattern&&S.pattern.length===7)?S.pattern:DEF_PATTERN.slice();
       S.altWeeks=(S.altWeeks===undefined)?true:!!S.altWeeks;
+      S.flips=Array.isArray(S.flips)?S.flips:[];
       fixGyms(S);
       persistAll(prev); applyTheme(); setAccent(); renderSettings(); toast('Varmuuskopio tuotu');
     });
@@ -1018,7 +1086,7 @@ V.asetukset.addEventListener('click',function(e){
 });
 
 /* ---------- pilvitallennus (Supabase) ---------- */
-var PKEY='treeni.pending', SKEY='treeni.synced', VER='w4', WKEY='treeni.wrote';
+var PKEY='treeni.pending', SKEY='treeni.synced', VER='w5', WKEY='treeni.wrote';
 var SB_URL='https://ijzurdaldczkjlabcchc.supabase.co/rest/v1/rpc/', SB_KEY='sb_publishable_BXr_11KXalN0nVp65OTjxw_s6tt6bQF';
 var db=null, dbTried=false, everSynced=false, wrote=false, pending={}, flushT=null, flushing=false, lastOk=0, lastErr='';
 try{ pending=JSON.parse(localStorage.getItem(PKEY)||'{}')||{}; }catch(e){ pending={}; }
@@ -1035,7 +1103,7 @@ function sessionDoc(s){
   if(s.gym) d.gym=s.gym;
   return d;
 }
-function configDoc(){ return {ex:S.ex,prog:S.prog,overrides:S.overrides||{},theme:S.theme||'dark',names:S.names,pattern:S.pattern,altWeeks:S.altWeeks,gyms:S.gyms,gym:S.gym,updatedAt:Date.now()}; }
+function configDoc(){ return {ex:S.ex,prog:S.prog,overrides:S.overrides||{},theme:S.theme||'dark',names:S.names,pattern:S.pattern,altWeeks:S.altWeeks,flips:S.flips||[],gyms:S.gyms,gym:S.gym,updatedAt:Date.now()}; }
 /* pending[id] on versiolaskuri: kirjoituksen valmistuessa merkki poistetaan vain jos sitä ei ole sillä välin muutettu */
 var seq=0; for(var pk in pending) seq=Math.max(seq,+pending[pk]||0);
 function bump(id){ pending[id]=++seq; }
@@ -1097,6 +1165,7 @@ function applyConfig(b){
   S.names={A:(b.names&&b.names.A)||DEF_NAMES.A,P:(b.names&&b.names.P)||DEF_NAMES.P,R:(b.names&&b.names.R)||DEF_NAMES.R};
   S.pattern=(b.pattern&&b.pattern.length===7)?b.pattern:DEF_PATTERN.slice();
   S.altWeeks=(b.altWeeks===undefined)?true:!!b.altWeeks;
+  S.flips=Array.isArray(b.flips)?b.flips:[];
   /* vanhan version kirjoittamassa configissa ei ole saleja: pidetään tämän laitteen salit */
   var keep=S.gyms;
   S.gyms=b.gyms; S.gym=b.gym||S.gym; fixGyms(S,keep);
